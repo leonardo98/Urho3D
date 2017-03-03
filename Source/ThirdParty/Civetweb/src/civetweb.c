@@ -132,48 +132,6 @@ mg_static_assert(sizeof(void *) >= sizeof(int), "data type size check");
 #include <mach/mach_time.h>
 #include <assert.h>
 
-/* clock_gettime is not implemented on OSX */
-int clock_gettime(int clk_id, struct timespec *t);
-
-int clock_gettime(int clk_id, struct timespec *t)
-{
-	if (clk_id == CLOCK_REALTIME) {
-		struct timeval now;
-		int rv = gettimeofday(&now, NULL);
-		if (rv) {
-			return rv;
-		}
-		t->tv_sec = now.tv_sec;
-		t->tv_nsec = now.tv_usec * 1000;
-		return 0;
-
-	} else if (clk_id == CLOCK_MONOTONIC) {
-		static uint64_t start_time = 0;
-		static mach_timebase_info_data_t timebase_ifo = {0, 0};
-
-		uint64_t now = mach_absolute_time();
-
-		if (start_time == 0) {
-			kern_return_t mach_status = mach_timebase_info(&timebase_ifo);
-#if defined(DEBUG)
-			assert(mach_status == KERN_SUCCESS);
-#else
-			/* appease "unused variable" warning for release builds */
-			(void)mach_status;
-#endif
-			start_time = now;
-		}
-
-		now =
-		    (uint64_t)((double)(now - start_time) * (double)timebase_ifo.numer /
-		               (double)timebase_ifo.denom);
-
-		t->tv_sec = now / 1000000000;
-		t->tv_nsec = now % 1000000000;
-		return 0;
-	}
-	return -1; /* EINVAL - Clock ID is unknown */
-}
 #endif
 
 // Urho3D: Prevent inclusion of pthread_time.h on MinGW, instead prefer own implementation of clock_gettime()
