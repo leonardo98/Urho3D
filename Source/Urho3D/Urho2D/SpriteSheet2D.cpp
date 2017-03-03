@@ -249,6 +249,15 @@ bool SpriteSheet2D::EndLoadFromXMLFile()
         IntRect rectangle(x, y, x + width, y + height);
 
         Vector2 hotSpot(0.5f, 0.5f);
+        if (subTextureElem.HasAttribute("pivotX"))
+        {
+            hotSpot.x_ = static_cast<float>(subTextureElem.GetInt("pivotX")) / width;
+        }
+        if (subTextureElem.HasAttribute("pivotY"))
+        {
+            hotSpot.y_ = static_cast<float>(subTextureElem.GetInt("pivotY")) / height;
+        }
+
         IntVector2 offset(0, 0);
         if (subTextureElem.HasAttribute("frameWidth") && subTextureElem.HasAttribute("frameHeight"))
         {
