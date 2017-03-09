@@ -128,9 +128,56 @@ bool JSONFile::BeginLoad(Deserializer& source)
     buffer[dataSize] = '\0';
 
     rapidjson::Document document;
-    if (document.Parse<0>(buffer).HasParseError())
+    document.Parse<0>(buffer);
+    if (document.HasParseError())
     {
+        unsigned long index = document.GetErrorOffset();
+        unsigned lineNumber = 1;
+        while (index > 0)
+        {
+            if (buffer[index] == 0xA)
+            {
+                ++lineNumber;
+                --index;
+                if (index > 0 && buffer[index] != 0xD)
+                {
+                    continue;
+                }
+            }
+            else if (buffer[index] == 0xD)
+            {
+                ++lineNumber;
+                --index;
+                if (index > 0 && buffer[index] != 0xA)
+                {
+                    continue;
+                }
+            }
+            --index;
+        }
+        unsigned long errorStart = document.GetErrorOffset();
+        while (errorStart > 0 && buffer[errorStart] != 0xA && buffer[errorStart] != 0xD)
+        {
+            --errorStart;
+        }
+        unsigned long errorEnd = document.GetErrorOffset();
+        while (errorEnd < dataSize && buffer[errorEnd] != 0xA && buffer[errorEnd] != 0xD && buffer[errorEnd] != '\0')
+        {
+            ++errorEnd;
+        }
+        buffer[errorEnd] = 0;
         URHO3D_LOGERROR("Could not parse JSON data from " + source.GetName());
+        char buff[1000];
+        sprintf(buff, "JSON parse error: %s line: %u", document.GetParseError(), lineNumber);
+        URHO3D_LOGERROR(buff);
+        String line("    ");
+        URHO3D_LOGERROR(line + &buffer[errorStart + 1]);
+        for (unsigned long i = errorStart; i < document.GetErrorOffset(); ++i)
+        {
+            line += " ";
+        }
+        line += "^";
+        URHO3D_LOGERROR(line);
         return false;
     }
 
