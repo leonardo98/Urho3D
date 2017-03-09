@@ -172,7 +172,7 @@ bool JSONFile::BeginLoad(Deserializer& source)
         URHO3D_LOGERROR(buff);
         String line("    ");
         URHO3D_LOGERROR(line + &buffer[errorStart + 1]);
-        for (unsigned long i = errorStart; i < document.GetErrorOffset(); ++i)
+        for (unsigned long i = errorStart + 1; i < document.GetErrorOffset(); ++i)
         {
             line += " ";
         }
