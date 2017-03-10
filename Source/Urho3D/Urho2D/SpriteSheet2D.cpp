@@ -255,7 +255,7 @@ bool SpriteSheet2D::EndLoadFromXMLFile()
         }
         if (subTextureElem.HasAttribute("pivotY"))
         {
-            hotSpot.y_ = static_cast<float>(subTextureElem.GetInt("pivotY")) / height;
+            hotSpot.y_ = 1.f - static_cast<float>(subTextureElem.GetInt("pivotY")) / height;
         }
 
         IntVector2 offset(0, 0);
