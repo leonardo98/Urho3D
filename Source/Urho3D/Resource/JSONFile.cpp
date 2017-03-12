@@ -133,27 +133,30 @@ bool JSONFile::BeginLoad(Deserializer& source)
     {
         unsigned long index = document.GetErrorOffset();
         unsigned lineNumber = 1;
-        while (index > 0)
+        for (unsigned long i = 0; i < index; )
         {
-            if (buffer[index] == 0xA)
+            if (buffer[i] == 0xA)
             {
                 ++lineNumber;
-                --index;
-                if (index > 0 && buffer[index] != 0xD)
+                ++i;
+                if (i < index && buffer[i] == 0xD)
                 {
-                    continue;
+                    ++i;
                 }
             }
-            else if (buffer[index] == 0xD)
+            else if (buffer[i] == 0xD)
             {
                 ++lineNumber;
-                --index;
-                if (index > 0 && buffer[index] != 0xA)
+                ++i;
+                if (i < index && buffer[i] == 0xA)
                 {
-                    continue;
+                    ++i;
                 }
             }
-            --index;
+            else
+            {
+                ++i;
+            }
         }
         unsigned long errorStart = document.GetErrorOffset();
         while (errorStart > 0 && buffer[errorStart] != 0xA && buffer[errorStart] != 0xD)
