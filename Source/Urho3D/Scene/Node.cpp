@@ -963,6 +963,8 @@ Component* Node::CloneComponent(Component* component, CreateMode mode, unsigned 
         return 0;
     }
 
+    cloneComponent->LightCopy(*component);
+
     const Vector<AttributeInfo>* compAttributes = component->GetAttributes();
     const Vector<AttributeInfo>* cloneAttributes = cloneComponent->GetAttributes();
 
