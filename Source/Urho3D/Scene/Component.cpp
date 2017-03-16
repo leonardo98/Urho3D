@@ -236,6 +236,10 @@ void Component::OnNodeSet(Node* node)
 {
 }
 
+void Component::OnAddToParent(Node* node)
+{
+}
+
 void Component::OnSceneSet(Scene* scene)
 {
 }

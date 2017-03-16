@@ -115,6 +115,8 @@ protected:
     virtual void OnAttributeAnimationRemoved();
     /// Handle scene node being assigned at creation.
     virtual void OnNodeSet(Node* node);
+    /// Handle scene node being added to node.
+    virtual void OnAddToParent(Node* node);
     /// Handle scene being assigned. This may happen several times during the component's lifetime. Scene-wide subsystems and events are subscribed to here.
     virtual void OnSceneSet(Scene* scene);
     /// Handle scene node transform dirtied.

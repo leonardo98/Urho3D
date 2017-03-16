@@ -846,6 +846,9 @@ void Node::AddChild(Node* node, unsigned index)
     // If the child node has components, also mark network update on them to ensure they have a valid NetworkState
     for (Vector<SharedPtr<Component> >::Iterator i = node->components_.Begin(); i != node->components_.End(); ++i)
         (*i)->MarkNetworkUpdate();
+    // 
+    for (Vector<SharedPtr<Component> >::Iterator i = node->components_.Begin(); i != node->components_.End(); ++i)
+        (*i)->OnAddToParent(this);
 
     // Send change event
     if (scene_)
