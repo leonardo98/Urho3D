@@ -237,6 +237,12 @@ bool SpriteSheet2D::EndLoadFromXMLFile()
     }
 
     XMLElement rootElem = loadXMLFile_->GetRoot("TextureAtlas");
+    if (!rootElem.HasAttribute("fps"))
+    {
+        URHO3D_LOGERROR("Attribute \"fps\" not found.");
+        return false;
+    }
+    defaultFps_ = rootElem.GetFloat("fps");
     XMLElement subTextureElem = rootElem.GetChild("SubTexture");
     while (subTextureElem)
     {

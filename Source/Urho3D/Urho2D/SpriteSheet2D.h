@@ -57,6 +57,7 @@ public:
     void DefineSprite(const String& name, const IntRect& rectangle, const Vector2& hotSpot = Vector2(0.5f, 0.5f),
         const IntVector2& offset = IntVector2::ZERO);
 
+    float GetDefaultFPS() const { return defaultFps_; }
     /// Return texture.
     Texture2D* GetTexture() const { return texture_; }
     /// Return sprite.
@@ -80,6 +81,7 @@ private:
     /// End load from JSON file.
     bool EndLoadFromJSONFile();
 
+    float defaultFps_;
     /// Texture.
     SharedPtr<Texture2D> texture_;
     /// Sprite mapping.
