@@ -213,9 +213,9 @@ public:
     bool IsOccludee() const { return occludee_; }
 
     /// Return whether is in view this frame from any viewport camera. Excludes shadow map cameras.
-    bool IsInView() const;
+    virtual bool IsInView() const;
     /// Return whether is in view of a specific camera this frame. Pass in a null camera to allow any camera, including shadow map cameras.
-    bool IsInView(Camera* camera) const;
+    virtual bool IsInView(Camera* camera) const;
 
     /// Return draw call source data.
     const Vector<SourceBatch>& GetBatches() const { return batches_; }
