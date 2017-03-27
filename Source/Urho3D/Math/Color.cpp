@@ -40,6 +40,14 @@ unsigned Color::ToUInt() const
     return (a << 24) | (b << 16) | (g << 8) | r;
 }
 
+void Color::FromUInt(unsigned int color)
+{
+    a_ = ((color & 0xFF000000) >> 24) / 255.f;
+    b_ = ((color & 0xFF0000) >> 16) / 255.f;
+    g_ = ((color & 0xFF00) >> 8) / 255.f;
+    r_ = (color & 0xFF) / 255.f;
+}
+
 Vector3 Color::ToHSL() const
 {
     float min, max;

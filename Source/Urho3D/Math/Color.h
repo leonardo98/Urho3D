@@ -72,6 +72,15 @@ public:
     {
     }
 
+    /// Construct from unsigned int (0xAABBGGRR)
+    Color(unsigned int color)
+       : a_(((color & 0xFF000000) >> 24) / 255.f)
+       , b_(((color & 0xFF0000) >> 16) / 255.f)
+       , g_(((color & 0xFF00) >> 8) / 255.f)
+       , r_((color & 0xFF) / 255.f)
+    {
+    }
+
     /// Construct from RGBA values.
     Color(float r, float g, float b, float a) :
         r_(r),
@@ -137,6 +146,8 @@ public:
     Vector3 ToHSL() const;
     /// Return HSV color-space representation as a Vector3; the RGB values are clipped before conversion but not changed in the process.
     Vector3 ToHSV() const;
+    /// Set RGBA values from unsigned int (0xAABBGGRR)
+    void FromUInt(unsigned int);
     /// Set RGBA values from specified HSL values and alpha.
     void FromHSL(float h, float s, float l, float a = 1.0f);
     /// Set RGBA values from specified HSV values and alpha.
