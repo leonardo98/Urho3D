@@ -247,13 +247,6 @@ bool UIElement::LoadXML(const XMLElement& source, XMLFile* styleFile, bool setIn
         }
     }
 
-    // Get name override if defined
-    String name = source.GetAttribute("name");
-    if (!name.Empty())
-    {
-        SetName(name);
-    }
-
     // Prevent updates while loading attributes
     DisableLayoutUpdate();
 
