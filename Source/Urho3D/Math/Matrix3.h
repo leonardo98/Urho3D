@@ -196,6 +196,32 @@ public:
         );
     }
 
+    void Mul(const Matrix3 &rhs)
+    {
+        *this = *this * rhs;
+    }
+
+    void Rotate(float angle) {
+        Matrix3 m(cos(angle), sin(angle), 0.f
+            , -sin(angle), cos(angle), 0.f
+            , 0.f, 0.f, 1.f);
+        Mul(m);
+    }
+
+    void Scale(float scx, float scy) {
+        Matrix3 m(scx, 0.f, 0.f
+            , 0.f, scy, 0.f
+            , 0.f, 0.f, 1.f);
+        Mul(m);
+    }
+
+    void Move(float x, float y) {
+        Matrix3 m(1.f, 0.f, 0.f
+            , 0.f, 1.f, 0.f
+            , x, y, 1.f);
+        Mul(m);
+    }
+
     /// Set scaling elements.
     void SetScale(const Vector3& scale)
     {
