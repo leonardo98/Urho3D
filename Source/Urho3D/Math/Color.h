@@ -148,6 +148,8 @@ public:
     Vector3 ToHSV() const;
     /// Set RGBA values from unsigned int (0xAABBGGRR)
     void FromUInt(unsigned int);
+    /// Set RGBA values from String ("0xAABBGGRR")
+    void FromString(const String &s);
     /// Set RGBA values from specified HSL values and alpha.
     void FromHSL(float h, float s, float l, float a = 1.0f);
     /// Set RGBA values from specified HSV values and alpha.

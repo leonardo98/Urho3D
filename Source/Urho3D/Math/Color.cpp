@@ -48,6 +48,21 @@ void Color::FromUInt(unsigned int color)
     r_ = (color & 0xFF) / 255.f;
 }
 
+void Color::FromString(const String &s)
+{
+    assert(s.Substring(0, 2) == "0x");
+    unsigned int color;
+    int result = sscanf(&s.At(2), "%x", &color);
+    if (result == 1)
+    {
+        FromUInt(color);
+    }
+    else
+    {
+        assert(false);
+    }
+}
+
 Vector3 Color::ToHSL() const
 {
     float min, max;
