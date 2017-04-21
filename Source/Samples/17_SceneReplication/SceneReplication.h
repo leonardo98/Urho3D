@@ -63,6 +63,7 @@ protected:
     }
 
 private:
+    void ApplyControl(const Controls& controls, RigidBody* body);
     /// Construct the scene content.
     void CreateScene();
     /// Construct instruction text and the login / start server UI.
@@ -98,6 +99,7 @@ private:
     /// Handle remote event from server which tells our controlled object node ID.
     void HandleClientObjectID(StringHash eventType, VariantMap& eventData);
 
+    WeakPtr<Node> ball_;
     /// Mapping from client connections to controllable objects.
     HashMap<Connection*, WeakPtr<Node> > serverObjects_;
     /// Button container element.

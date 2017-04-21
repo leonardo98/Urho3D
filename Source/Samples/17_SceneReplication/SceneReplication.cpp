@@ -352,25 +352,25 @@ void SceneReplication::HandlePhysicsPreStep(StringHash eventType, VariantMap& ev
     Network* network = GetSubsystem<Network>();
     Connection* serverConnection = network->GetServerConnection();
 
+    UI* ui = GetSubsystem<UI>();
+    Input* input = GetSubsystem<Input>();
+    Controls controls;
+
+    // Copy mouse yaw
+    controls.yaw_ = yaw_;
+
+    // Only apply WASD controls if there is no focused UI element
+    if (!ui->GetFocusElement())
+    {
+        controls.Set(CTRL_FORWARD, input->GetKeyDown(KEY_W));
+        controls.Set(CTRL_BACK, input->GetKeyDown(KEY_S));
+        controls.Set(CTRL_LEFT, input->GetKeyDown(KEY_A));
+        controls.Set(CTRL_RIGHT, input->GetKeyDown(KEY_D));
+    }
+
     // Client: collect controls
     if (serverConnection)
     {
-        UI* ui = GetSubsystem<UI>();
-        Input* input = GetSubsystem<Input>();
-        Controls controls;
-
-        // Copy mouse yaw
-        controls.yaw_ = yaw_;
-
-        // Only apply WASD controls if there is no focused UI element
-        if (!ui->GetFocusElement())
-        {
-            controls.Set(CTRL_FORWARD, input->GetKeyDown(KEY_W));
-            controls.Set(CTRL_BACK, input->GetKeyDown(KEY_S));
-            controls.Set(CTRL_LEFT, input->GetKeyDown(KEY_A));
-            controls.Set(CTRL_RIGHT, input->GetKeyDown(KEY_D));
-        }
-
         serverConnection->SetControls(controls);
         // In case the server wants to do position-based interest management using the NetworkPriority components, we should also
         // tell it our observer (camera) position. In this sample it is not in use, but eg. the NinjaSnowWar game uses it
@@ -393,24 +393,36 @@ void SceneReplication::HandlePhysicsPreStep(StringHash eventType, VariantMap& ev
 
             // Get the last controls sent by the client
             const Controls& controls = connection->GetControls();
-            // Torque is relative to the forward vector
-            Quaternion rotation(0.0f, controls.yaw_, 0.0f);
 
-            const float MOVE_TORQUE = 3.0f;
+            ApplyControl(controls, body);
+        }
 
-            // Movement torque is applied before each simulation step, which happen at 60 FPS. This makes the simulation
-            // independent from rendering framerate. We could also apply forces (which would enable in-air control),
-            // but want to emphasize that it's a ball which should only control its motion by rolling along the ground
-            if (controls.buttons_ & CTRL_FORWARD)
-                body->ApplyTorque(rotation * Vector3::RIGHT * MOVE_TORQUE);
-            if (controls.buttons_ & CTRL_BACK)
-                body->ApplyTorque(rotation * Vector3::LEFT * MOVE_TORQUE);
-            if (controls.buttons_ & CTRL_LEFT)
-                body->ApplyTorque(rotation * Vector3::FORWARD * MOVE_TORQUE);
-            if (controls.buttons_ & CTRL_RIGHT)
-                body->ApplyTorque(rotation * Vector3::BACK * MOVE_TORQUE);
+        if (ball_)
+        {
+            RigidBody* body = ball_->GetComponent<RigidBody>();
+            ApplyControl(controls, body);
         }
     }
+}
+
+void SceneReplication::ApplyControl(const Controls& controls, RigidBody* body)
+{
+    // Torque is relative to the forward vector
+    Quaternion rotation(0.0f, controls.yaw_, 0.0f);
+
+    const float MOVE_TORQUE = 3.0f;
+
+    // Movement torque is applied before each simulation step, which happen at 60 FPS. This makes the simulation
+    // independent from rendering framerate. We could also apply forces (which would enable in-air control),
+    // but want to emphasize that it's a ball which should only control its motion by rolling along the ground
+    if (controls.buttons_ & CTRL_FORWARD)
+        body->ApplyTorque(rotation * Vector3::RIGHT * MOVE_TORQUE);
+    if (controls.buttons_ & CTRL_BACK)
+        body->ApplyTorque(rotation * Vector3::LEFT * MOVE_TORQUE);
+    if (controls.buttons_ & CTRL_LEFT)
+        body->ApplyTorque(rotation * Vector3::FORWARD * MOVE_TORQUE);
+    if (controls.buttons_ & CTRL_RIGHT)
+        body->ApplyTorque(rotation * Vector3::BACK * MOVE_TORQUE);
 }
 
 void SceneReplication::HandleConnect(StringHash eventType, VariantMap& eventData)
@@ -442,6 +454,10 @@ void SceneReplication::HandleDisconnect(StringHash eventType, VariantMap& eventD
     // Or if we were running a server, stop it
     else if (network->IsServerRunning())
     {
+        ball_->Remove();
+        ball_ = nullptr;
+        clientObjectID_ = 0;
+
         network->StopServer();
         scene_->Clear(true, false);
     }
@@ -455,6 +471,10 @@ void SceneReplication::HandleStartServer(StringHash eventType, VariantMap& event
     network->StartServer(SERVER_PORT);
 
     UpdateButtons();
+
+    assert(!ball_);
+    ball_ = CreateControllableObject();
+    clientObjectID_ = ball_->GetID();
 }
 
 void SceneReplication::HandleConnectionStatus(StringHash eventType, VariantMap& eventData)
