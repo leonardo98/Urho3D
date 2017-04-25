@@ -105,8 +105,6 @@ public:
     void PrepareNetworkUpdate();
     /// Clean up all references to a network connection that is about to be removed.
     void CleanupConnection(Connection* connection);
-    /// Redefine to have fast(no-attribute) copy
-    virtual void LightCopy(const Component &);
 
 protected:
     /// Handle attribute animation added.

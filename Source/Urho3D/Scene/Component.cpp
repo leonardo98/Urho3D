@@ -325,8 +325,4 @@ void Component::DoAutoRemove(AutoRemoveMode mode)
     }
 }
 
-void Component::LightCopy(const Component &)
-{
-}
-
 }
