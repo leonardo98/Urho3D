@@ -370,4 +370,11 @@ void StaticSprite2D::UpdateDrawRect()
     }
 }
 
+/// Return flip X.
+bool StaticSprite2D::GetFlipX() const
+{
+    return flipX_;
+}
+
+
 }

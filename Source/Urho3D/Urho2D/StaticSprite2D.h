@@ -84,7 +84,7 @@ public:
     BlendMode GetBlendMode() const { return blendMode_; }
 
     /// Return flip X.
-    bool GetFlipX() const { return flipX_; }
+    bool GetFlipX() const;
 
     /// Return flip Y.
     bool GetFlipY() const { return flipY_; }
