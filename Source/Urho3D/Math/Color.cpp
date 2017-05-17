@@ -53,6 +53,10 @@ void Color::FromString(const String &s)
     assert(s.Substring(0, 2) == "0x");
     unsigned int color;
     int result = sscanf(&s.At(2), "%x", &color);
+    if (s.Length() == 8)
+    {
+        color |= 0xFF000000;
+    }
     if (result == 1)
     {
         FromUInt(color);
