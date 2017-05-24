@@ -169,18 +169,18 @@ bool JSONFile::BeginLoad(Deserializer& source)
             ++errorEnd;
         }
         buffer[errorEnd] = 0;
-        URHO3D_LOGERROR("Could not parse JSON data from " + source.GetName());
+        URHO3D_LOGDEBUG("Could not parse JSON data from " + source.GetName());
         char buff[1000];
         sprintf(buff, "JSON parse error: %s line: %u", document.GetParseError(), lineNumber);
-        URHO3D_LOGERROR(buff);
+        URHO3D_LOGDEBUG(buff);
         String line("    ");
-        URHO3D_LOGERROR(line + &buffer[errorStart + 1]);
+        URHO3D_LOGDEBUG(line + &buffer[errorStart + 1]);
         for (unsigned long i = errorStart + 1; i < document.GetErrorOffset(); ++i)
         {
             line += " ";
         }
         line += "^";
-        URHO3D_LOGERROR(line);
+        URHO3D_LOGDEBUG(line);
         return false;
     }
 
