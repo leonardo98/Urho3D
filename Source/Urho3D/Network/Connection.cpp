@@ -279,7 +279,7 @@ void Connection::SendClientUpdate()
     if (sendMode_ >= OPSM_POSITION_ROTATION)
         msg_.WritePackedQuaternion(rotation_);
     SendMessage(MSG_CONTROLS, false, false, msg_, CONTROLS_CONTENT_ID);
-
+    controls_.Reset();
     ++timeStamp_;
 }
 
