@@ -223,6 +223,9 @@ inline float Random(float min, float max) { return Rand() * (max - min) / 32767.
 /// Return a random integer between 0 and range - 1.
 inline int Random(int range) { return (int)(Random() * range); }
 
+/// Return a random unsigned integer between 0 and range - 1.
+inline int Random(unsigned int range) { return (unsigned int)(Random() * range); }
+
 /// Return a random integer between min and max - 1.
 inline int Random(int min, int max) { float range = (float)(max - min); return (int)(Random() * range) + min; }
 

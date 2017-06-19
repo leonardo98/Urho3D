@@ -144,6 +144,12 @@ float Ray::HitDistance(const BoundingBox& box) const
         }
     }
 
+    if (dist > _HUGE_ENUF)
+    {
+        return (Vector2(origin_.x_, origin_.y_)
+            - 0.5f * Vector2(box.min_.x_ + box.max_.x_, box.min_.y_ + box.max_.y_)).Length();
+    }
+
     return dist;
 }
 
