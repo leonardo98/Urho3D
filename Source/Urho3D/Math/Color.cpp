@@ -51,8 +51,12 @@ void Color::FromUInt(unsigned int color)
 void Color::FromString(const String &s)
 {
     assert(s.Substring(0, 2) == "0x");
-    unsigned int color;
-    int result = sscanf(&s.At(2), "%x", &color);
+    unsigned int readColor;
+    int result = sscanf(&s.At(2), "%x", &readColor);
+    unsigned int color = (readColor & 0xFF00FF00)
+        | (readColor & 0xFF0000) >> 16
+        | (readColor & 0xFF) << 16;
+
     if (s.Length() == 8)
     {
         color |= 0xFF000000;
