@@ -206,6 +206,7 @@ public:
     void SetTextAttr(const String& value);
     /// Return text attribute.
     String GetTextAttr() const;
+    void SetScalable(bool value);
 
 protected:
     /// Filter implicit attributes in serialization process.
@@ -222,7 +223,10 @@ protected:
     void ConstructBatch
         (UIBatch& pageBatch, const PODVector<GlyphLocation>& pageGlyphLocation, int dx = 0, int dy = 0, Color* color = 0,
             float depthBias = 0.0f);
+    const Matrix3x4& GetTransform() const;
 
+    bool scalable_;
+    mutable Matrix3x4 transform_;
     /// Font.
     SharedPtr<Font> font_;
     /// Current face.
