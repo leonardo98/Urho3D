@@ -156,6 +156,9 @@ const Matrix3x4& Text::GetTransform() const
         case HA_RIGHT:
             pos.x_ += parent_->GetSize().x_ - GetWidth();
             break;
+        case HA_CUSTOM:
+            pos.x_ += GetPosition().x_;
+            break;
         }
         switch (GetVerticalAlignment())
         {
@@ -166,6 +169,9 @@ const Matrix3x4& Text::GetTransform() const
             break;
         case VA_BOTTOM:
             pos.y_ += (float)(parent_->GetSize().y_);
+            break;
+        case HA_CUSTOM:
+            pos.y_ += GetPosition().y_;
             break;
         }
     }
