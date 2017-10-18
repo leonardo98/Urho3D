@@ -28,6 +28,7 @@
 namespace Urho3D
 {
 
+class ShaderVariation;
 /// %UI element which allows sub-pixel positioning and size, as well as rotation. Only other Sprites should be added as child elements.
 class URHO3D_API Sprite : public UIElement
 {
@@ -78,6 +79,8 @@ public:
     void SetFullImageRect();
     /// Set blend mode.
     void SetBlendMode(BlendMode mode);
+    /// Set shaders
+    void SetShaders(ShaderVariation *vs, ShaderVariation *ps);
 
     /// Return floating point position.
     const Vector2& GetPosition() const { return floatPosition_; }
@@ -124,6 +127,9 @@ protected:
     BlendMode blendMode_;
     /// Transform matrix.
     mutable Matrix3x4 transform_;
+    /// Shaders
+    SharedPtr<ShaderVariation> shaderVS_;
+    SharedPtr<ShaderVariation> shaderPS_;
 };
 
 }

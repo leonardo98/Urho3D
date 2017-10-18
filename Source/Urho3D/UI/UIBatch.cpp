@@ -23,6 +23,7 @@
 #include "../Precompiled.h"
 
 #include "../Graphics/Graphics.h"
+#include "../Graphics/ShaderVariation.h"
 #include "../Graphics/Texture.h"
 #include "../UI/UIElement.h"
 
@@ -40,7 +41,9 @@ UIBatch::UIBatch() :
     invTextureSize_(Vector2::ONE),
     vertexData_(0),
     vertexStart_(0),
-    vertexEnd_(0)
+    vertexEnd_(0),
+    shaderVS_(0),
+    shaderPS_(0)
 {
     SetDefaultColor();
 }
@@ -53,7 +56,9 @@ UIBatch::UIBatch(UIElement* element, BlendMode blendMode, const IntRect& scissor
     invTextureSize_(texture ? Vector2(1.0f / (float)texture->GetWidth(), 1.0f / (float)texture->GetHeight()) : Vector2::ONE),
     vertexData_(vertexData),
     vertexStart_(vertexData->Size()),
-    vertexEnd_(vertexData->Size())
+    vertexEnd_(vertexData->Size()),
+    shaderVS_(0),
+    shaderPS_(0)
 {
     SetDefaultColor();
 }
@@ -312,7 +317,7 @@ void UIBatch::AddQuad(const Matrix3x4& transform, const IntVector2& a, const Int
     ((unsigned&)dest[9]) = color_;
     dest[10] = uv2.x_;
     dest[11] = uv2.y_;
-    
+
     dest[12] = v3.x_;
     dest[13] = v3.y_;
     dest[14] = 0.0f;
@@ -379,7 +384,7 @@ void UIBatch::AddQuad(const Matrix3x4& transform, const IntVector2& a, const Int
     ((unsigned&)dest[9]) = c2;
     dest[10] = uv2.x_;
     dest[11] = uv2.y_;
-    
+
     dest[12] = v3.x_;
     dest[13] = v3.y_;
     dest[14] = 0.0f;
@@ -454,6 +459,12 @@ void UIBatch::AddOrMerge(const UIBatch& batch, PODVector<UIBatch>& batches)
         return;
 
     batches.Push(batch);
+}
+
+void UIBatch::SetShaders(ShaderVariation *vs, ShaderVariation *ps)
+{
+    shaderVS_ = vs;
+    shaderPS_ = ps;
 }
 
 }

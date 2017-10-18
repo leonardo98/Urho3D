@@ -851,15 +851,23 @@ void UI::Render(bool resetRenderTargets, VertexBuffer* buffer, const PODVector<U
         }
         else
         {
-            // If texture contains only an alpha channel, use alpha shader (for fonts)
-            vs = diffTextureVS;
-
-            if (batch.texture_->GetFormat() == alphaFormat)
-                ps = alphaTexturePS;
-            else if (batch.blendMode_ != BLEND_ALPHA && batch.blendMode_ != BLEND_ADDALPHA && batch.blendMode_ != BLEND_PREMULALPHA)
-                ps = diffMaskTexturePS;
+            if(batch.shaderVS_ && batch.shaderPS_)
+            {
+                vs = batch.shaderVS_;
+                ps = batch.shaderPS_;
+            }
             else
-                ps = diffTexturePS;
+            {
+                // If texture contains only an alpha channel, use alpha shader (for fonts)
+                vs = diffTextureVS;
+
+                if (batch.texture_->GetFormat() == alphaFormat)
+                    ps = alphaTexturePS;
+                else if (batch.blendMode_ != BLEND_ALPHA && batch.blendMode_ != BLEND_ADDALPHA && batch.blendMode_ != BLEND_PREMULALPHA)
+                    ps = diffMaskTexturePS;
+                else
+                    ps = diffTexturePS;
+            }
         }
 
         graphics_->SetShaders(vs, ps);

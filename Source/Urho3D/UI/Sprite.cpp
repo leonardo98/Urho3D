@@ -24,6 +24,7 @@
 
 #include "../Core/Context.h"
 #include "../Graphics/Texture2D.h"
+#include "../Graphics/ShaderVariation.h"
 #include "../Resource/ResourceCache.h"
 #include "../UI/Sprite.h"
 
@@ -123,6 +124,9 @@ void Sprite::GetBatches(PODVector<UIBatch>& batches, PODVector<float>& vertexDat
     batch.AddQuad(GetTransform(), 0, 0, size.x_, size.y_, imageRect_.left_, imageRect_.top_, imageRect_.right_ - imageRect_.left_,
         imageRect_.bottom_ - imageRect_.top_);
 
+    if(shaderVS_ && shaderPS_)
+        batch.SetShaders(shaderVS_, shaderPS_);
+
     UIBatch::AddOrMerge(batch, batches);
 
     // Reset hovering for next frame
@@ -215,6 +219,12 @@ void Sprite::SetFullImageRect()
 void Sprite::SetBlendMode(BlendMode mode)
 {
     blendMode_ = mode;
+}
+
+void Sprite::SetShaders(ShaderVariation *vs, ShaderVariation *ps)
+{
+    shaderVS_ = vs;
+    shaderPS_ = ps;
 }
 
 const Matrix3x4& Sprite::GetTransform() const

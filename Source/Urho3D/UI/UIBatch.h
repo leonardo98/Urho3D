@@ -34,6 +34,7 @@ class Graphics;
 class Matrix3x4;
 class Texture;
 class UIElement;
+class ShaderVariation;
 
 static const unsigned UI_VERTEX_SIZE = 6;
 
@@ -68,6 +69,8 @@ public:
     bool Merge(const UIBatch& batch);
     /// Return an interpolated color for the UI element.
     unsigned GetInterpolatedColor(int x, int y);
+    /// Set custom shaders
+    void SetShaders(ShaderVariation *vs, ShaderVariation *ps);
 
     /// Add or merge a batch.
     static void AddOrMerge(const UIBatch& batch, PODVector<UIBatch>& batches);
@@ -92,7 +95,9 @@ public:
     unsigned vertexEnd_;
     /// Gradient flag.
     bool useGradient_;
-
+    /// Custom shaders
+    ShaderVariation *shaderVS_;
+    ShaderVariation *shaderPS_;
     /// Position adjustment vector for pixel-perfect rendering. Initialized by UI.
     static Vector3 posAdjust;
 };
