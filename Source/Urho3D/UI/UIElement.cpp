@@ -1086,7 +1086,7 @@ void UIElement::SetDefaultStyle(XMLFile* style)
 void UIElement::SetLayout(LayoutMode mode, int spacing, const IntRect& border)
 {
     layoutMode_ = mode;
-    layoutSpacing_ = Max(spacing, 0);
+    layoutSpacing_ = spacing;
     layoutBorder_ = IntRect(Max(border.left_, 0), Max(border.top_, 0), Max(border.right_, 0), Max(border.bottom_, 0));
     VerifyChildAlignment();
     UpdateLayout();
@@ -1101,7 +1101,7 @@ void UIElement::SetLayoutMode(LayoutMode mode)
 
 void UIElement::SetLayoutSpacing(int spacing)
 {
-    layoutSpacing_ = Max(spacing, 0);
+    layoutSpacing_ = spacing;
     UpdateLayout();
 }
 
