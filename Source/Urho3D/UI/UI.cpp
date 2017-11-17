@@ -222,8 +222,8 @@ bool UI::SetModalElement(UIElement* modalElement, bool enable)
         return false;
 
     // Currently only allow modal window
-    if (modalElement->GetType() != Window::GetTypeStatic())
-        return false;
+    //if (modalElement->GetType() != Window::GetTypeStatic())
+    //    return false;
 
     assert(rootModalElement_);
     UIElement* currParent = modalElement->GetParent();
