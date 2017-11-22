@@ -878,6 +878,16 @@ void UI::Render(bool resetRenderTargets, VertexBuffer* buffer, const PODVector<U
         if (graphics_->NeedParameterUpdate(SP_MATERIAL, this))
             graphics_->SetShaderParameter(PSP_MATDIFFCOLOR, Color(1.0f, 1.0f, 1.0f, 1.0f));
 
+        if(batch.shaderParameters_)
+        {
+            for (VariantMap::ConstIterator it = batch.shaderParameters_->Begin();
+                 it != batch.shaderParameters_->End(); ++it)
+            {
+                graphics_->SetShaderParameter(it->first_, it->second_);
+            }
+        }
+
+
         float elapsedTime = GetSubsystem<Time>()->GetElapsedTime();
         graphics_->SetShaderParameter(VSP_ELAPSEDTIME, elapsedTime);
         graphics_->SetShaderParameter(PSP_ELAPSEDTIME, elapsedTime);

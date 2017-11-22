@@ -125,7 +125,11 @@ void Sprite::GetBatches(PODVector<UIBatch>& batches, PODVector<float>& vertexDat
         imageRect_.bottom_ - imageRect_.top_);
 
     if(shaderVS_ && shaderPS_)
-        batch.SetShaders(shaderVS_, shaderPS_);
+    {
+        batch.shaderPS_ = shaderPS_;
+        batch.shaderVS_ = shaderVS_;
+        batch.shaderParameters_ = &shaderParameters_;
+    }
 
     UIBatch::AddOrMerge(batch, batches);
 
@@ -225,6 +229,11 @@ void Sprite::SetShaders(ShaderVariation *vs, ShaderVariation *ps)
 {
     shaderVS_ = vs;
     shaderPS_ = ps;
+}
+
+void Sprite::SetShaderParameter(StringHash name, const Variant &value)
+{
+    shaderParameters_[name] = value;
 }
 
 const Matrix3x4& Sprite::GetTransform() const

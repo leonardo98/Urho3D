@@ -81,6 +81,8 @@ public:
     void SetBlendMode(BlendMode mode);
     /// Set shaders
     void SetShaders(ShaderVariation *vs, ShaderVariation *ps);
+    /// Set shader parameters
+    void SetShaderParameter(StringHash name, const Variant &value);
 
     /// Return floating point position.
     const Vector2& GetPosition() const { return floatPosition_; }
@@ -130,6 +132,8 @@ protected:
     /// Shaders
     SharedPtr<ShaderVariation> shaderVS_;
     SharedPtr<ShaderVariation> shaderPS_;
+    /// Shaders parameters
+    VariantMap shaderParameters_;
 };
 
 }

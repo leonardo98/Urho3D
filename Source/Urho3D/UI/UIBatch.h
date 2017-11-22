@@ -98,6 +98,8 @@ public:
     /// Custom shaders
     ShaderVariation *shaderVS_;
     ShaderVariation *shaderPS_;
+    /// Shaders parameters
+    VariantMap *shaderParameters_;
     /// Position adjustment vector for pixel-perfect rendering. Initialized by UI.
     static Vector3 posAdjust;
 };
