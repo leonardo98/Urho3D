@@ -63,7 +63,8 @@ Renderer2D::Renderer2D(Context* context) :
     Drawable(context, DRAWABLE_GEOMETRY),
     material_(new Material(context)),
     indexBuffer_(new IndexBuffer(context_)),
-    viewMask_(DEFAULT_VIEWMASK)
+    viewMask_(DEFAULT_VIEWMASK),
+    useTris_(false)
 {
     material_->SetName("Urho2D");
 
@@ -146,20 +147,25 @@ void Renderer2D::UpdateGeometry(const FrameInfo& frame)
         void* buffer = indexBuffer_->Lock(0, indexCount, true);
         if (buffer)
         {
-            unsigned quadCount = indexCount / 6;
+            unsigned quadCount =  useTris_ ? indexCount / 3 : indexCount / 6;
             if (largeIndices)
             {
                 unsigned* dest = reinterpret_cast<unsigned*>(buffer);
                 for (unsigned i = 0; i < quadCount; ++i)
                 {
-                    unsigned base = i * 4;
+                    unsigned base = i * (useTris_ ? 3 : 4);
                     dest[0] = base;
                     dest[1] = base + 1;
                     dest[2] = base + 2;
-                    dest[3] = base;
-                    dest[4] = base + 2;
-                    dest[5] = base + 3;
-                    dest += 6;
+                    if (!useTris_)
+                    {
+                        dest[3] = base;
+                        dest[4] = base + 2;
+                        dest[5] = base + 3;
+                        dest += 6;
+                    }
+                    else
+                        dest += 3;
                 }
             }
             else
@@ -167,14 +173,19 @@ void Renderer2D::UpdateGeometry(const FrameInfo& frame)
                 unsigned short* dest = reinterpret_cast<unsigned short*>(buffer);
                 for (unsigned i = 0; i < quadCount; ++i)
                 {
-                    unsigned base = i * 4;
+                    unsigned base = i * (useTris_ ? 3 : 4);
                     dest[0] = (unsigned short)(base);
                     dest[1] = (unsigned short)(base + 1);
                     dest[2] = (unsigned short)(base + 2);
-                    dest[3] = (unsigned short)(base);
-                    dest[4] = (unsigned short)(base + 2);
-                    dest[5] = (unsigned short)(base + 3);
-                    dest += 6;
+                    if (!useTris_)
+                    {
+                        dest[3] = (unsigned short)(base);
+                        dest[4] = (unsigned short)(base + 2);
+                        dest[5] = (unsigned short)(base + 3);
+                        dest += 6;
+                    }
+                    else
+                        dest += 3;
                 }
             }
 
@@ -445,7 +456,7 @@ void Renderer2D::UpdateViewBatchInfo(ViewBatchInfo2D& viewBatchInfo, Camera* cam
         Vector3 worldPos = sourceBatch->owner_->GetNode()->GetWorldPosition();
         sourceBatch->distance_ = camera->GetDistance(worldPos);
     }
-    
+
     Sort(sourceBatches.Begin(), sourceBatches.End(), CompareSourceBatch2Ds);
 
     viewBatchInfo.batchCount_ = 0;
@@ -478,7 +489,13 @@ void Renderer2D::UpdateViewBatchInfo(ViewBatchInfo2D& viewBatchInfo, Camera* cam
             currMaterial = material;
         }
 
-        iCount += vertices.Size() * 6 / 4;
+        unsigned indices;
+        if (useTris_)
+            indices = vertices.Size();
+        else
+            indices = vertices.Size() * 6 / 4;
+
+        iCount += indices;
         vCount += vertices.Size();
     }
 
@@ -491,7 +508,7 @@ void Renderer2D::UpdateViewBatchInfo(ViewBatchInfo2D& viewBatchInfo, Camera* cam
     viewBatchInfo.batchUpdatedFrameNumber_ = frame_.frameNumber_;
 }
 
-void Renderer2D::AddViewBatch(ViewBatchInfo2D& viewBatchInfo, Material* material, 
+void Renderer2D::AddViewBatch(ViewBatchInfo2D& viewBatchInfo, Material* material,
     unsigned indexStart, unsigned indexCount, unsigned vertexStart, unsigned vertexCount, float distance)
 {
     if (!material || indexCount == 0 || vertexCount == 0)

@@ -98,6 +98,10 @@ public:
     /// Check visibility.
     bool CheckVisibility(Drawable2D* drawable) const;
 
+    /// Whether this renderer uses triangles (instead of quads)
+    void SetUseTris(bool useTris) { useTris_ = useTris; }
+    bool GetUseTris() const { return useTris_; }
+
 private:
     /// Recalculate the world-space bounding box.
     virtual void OnWorldBoundingBoxUpdate();
@@ -110,7 +114,7 @@ private:
     /// Update view batch info.
     void UpdateViewBatchInfo(ViewBatchInfo2D& viewBatchInfo, Camera* camera);
     /// Add view batch.
-    void AddViewBatch(ViewBatchInfo2D& viewBatchInfo, Material* material, 
+    void AddViewBatch(ViewBatchInfo2D& viewBatchInfo, Material* material,
         unsigned indexStart, unsigned indexCount, unsigned vertexStart, unsigned vertexCount, float distance);
 
     /// Index buffer.
@@ -131,6 +135,8 @@ private:
     HashMap<Texture2D*, HashMap<int, SharedPtr<Material> > > cachedMaterials_;
     /// Cached techniques per blend mode.
     HashMap<int, SharedPtr<Technique> > cachedTechniques_;
+
+    bool useTris_;
 };
 
 }
