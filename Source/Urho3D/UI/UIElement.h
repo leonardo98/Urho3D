@@ -140,6 +140,8 @@ public:
     virtual bool IsWithinScissor(const IntRect& currentScissor);
     /// Update and return screen position.
     virtual const IntVector2& GetScreenPosition() const;
+    /// Update and return local position.
+    virtual const IntVector2& GetLocalPosition() const;
     /// Return UI rendering batches.
     virtual void GetBatches(PODVector<UIBatch>& batches, PODVector<float>& vertexData, const IntRect& currentScissor);
     /// Return UI rendering batches for debug draw.
@@ -634,6 +636,10 @@ public:
     /// Return effective minimum size, also considering layout. Used internally.
     IntVector2 GetEffectiveMinSize() const;
 
+    void UseCustomMatrix(bool value);
+    virtual void SetCustomMatrix(const Matrix3x4 &matrix);
+    virtual const Matrix3x4 GetCustomMatrix() const;
+
 protected:
     /// Handle attribute animation added.
     virtual void OnAttributeAnimationAdded();
@@ -719,7 +725,11 @@ protected:
     /// Screen position.
     mutable IntVector2 screenPosition_;
     /// Screen position dirty flag.
-    mutable bool positionDirty_;
+    mutable bool screenPositionDirty_;
+    /// Local position.
+    mutable IntVector2 localPosition_;
+    /// Local position dirty flag.
+    mutable bool localPositionDirty_;
     /// Applied style.
     String appliedStyle_;
     /// Drag button combo.
@@ -799,6 +809,10 @@ private:
     static XPathQuery styleXPathQuery_;
     /// Tag list.
     StringVector tags_;
+    /// Custom matrix.
+    Matrix3x4 customMatrix_;
+protected:
+    bool useCustomMatrix_;
 };
 
 template <class T> T* UIElement::CreateChild(const String& name, unsigned index)

@@ -58,6 +58,7 @@ public:
         int texHeight = 0);
     /// Add a quad with tiled texture.
     void AddQuad(int x, int y, int width, int height, int texOffsetX, int texOffsetY, int texWidth, int texHeight, bool tiled);
+    void AddQuad(const Matrix3x4& transform, int x, int y, int width, int height, int texOffsetX, int texOffsetY, int texWidth, int texHeight, bool tiled);
     /// Add a quad with freeform points and UVs. Uses the current color, not gradient. Points should be specified in clockwise order.
     void AddQuad(const Matrix3x4& transform, const IntVector2& a, const IntVector2& b, const IntVector2& c, const IntVector2& d,
         const IntVector2& texA, const IntVector2& texB, const IntVector2& texC, const IntVector2& texD);

@@ -111,6 +111,8 @@ public:
     ResourceRef GetTextureAttr() const;
     /// Update and return rendering transform, also used to transform child sprites.
     const Matrix3x4& GetTransform() const;
+    virtual void SetCustomMatrix(const Matrix3x4 &matrix) override;
+    virtual const Matrix3x4 GetCustomMatrix() const override;
 
 protected:
     /// Floating point position.

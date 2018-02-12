@@ -119,7 +119,8 @@ UIElement::UIElement(Context* context) :
     indent_(0),
     indentSpacing_(16),
     position_(IntVector2::ZERO),
-    positionDirty_(true),
+    screenPositionDirty_(true),
+    localPositionDirty_(true),
     dragButtonCombo_(0),
     dragButtonCount_(0),
     size_(IntVector2::ZERO),
@@ -139,7 +140,8 @@ UIElement::UIElement(Context* context) :
     maxOffset_(IntVector2::ZERO),
     enableAnchor_(false),
     pivot_(std::numeric_limits<float>::max(), std::numeric_limits<float>::max()),
-    pivotSet_(false)
+    pivotSet_(false),
+    useCustomMatrix_(false)
 {
     SetEnabled(false);
 }
@@ -414,15 +416,32 @@ void UIElement::GetDebugDrawBatches(PODVector<UIBatch>& batches, PODVector<float
         }
     }
 
-    batch.SetColor(Color::BLUE, true);
-    // Left
-    batch.AddQuad(0, 0, horizontalThickness, size_.y_, 0, 0);
-    // Top
-    batch.AddQuad(0, 0, size_.x_, verticalThickness, 0, 0);
-    // Right
-    batch.AddQuad(size_.x_ - horizontalThickness, 0, horizontalThickness, size_.y_, 0, 0);
-    // Bottom
-    batch.AddQuad(0, size_.y_ - verticalThickness, size_.x_, verticalThickness, 0, 0);
+    if (useCustomMatrix_)
+    {
+        const Matrix3x4 matrix = GetCustomMatrix();
+
+        batch.SetColor(Color::BLUE, true);
+        // Left
+        batch.AddQuad(matrix, 0, 0, horizontalThickness, size_.y_, 0, 0);
+        // Top
+        batch.AddQuad(matrix, 0, 0, size_.x_, verticalThickness, 0, 0);
+        // Right
+        batch.AddQuad(matrix, size_.x_ - horizontalThickness, 0, horizontalThickness, size_.y_, 0, 0);
+        // Bottom
+        batch.AddQuad(matrix, 0, size_.y_ - verticalThickness, size_.x_, verticalThickness, 0, 0);
+    }
+    else
+    {
+        batch.SetColor(Color::BLUE, true);
+        // Left
+        batch.AddQuad(0, 0, horizontalThickness, size_.y_, 0, 0);
+        // Top
+        batch.AddQuad(0, 0, size_.x_, verticalThickness, 0, 0);
+        // Right
+        batch.AddQuad(size_.x_ - horizontalThickness, 0, horizontalThickness, size_.y_, 0, 0);
+        // Bottom
+        batch.AddQuad(0, size_.y_ - verticalThickness, size_.x_, verticalThickness, 0, 0);
+    }
 
     UIBatch::AddOrMerge(batch, batches);
 }
@@ -439,7 +458,7 @@ bool UIElement::IsWithinScissor(const IntRect& currentScissor)
 
 const IntVector2& UIElement::GetScreenPosition() const
 {
-    if (positionDirty_)
+    if (screenPositionDirty_)
     {
         IntVector2 pos = position_;
         const UIElement* parent = parent_;
@@ -457,10 +476,34 @@ const IntVector2& UIElement::GetScreenPosition() const
         }
 
         screenPosition_ = pos;
-        positionDirty_ = false;
+        screenPositionDirty_ = false;
     }
 
     return screenPosition_;
+}
+
+const IntVector2& UIElement::GetLocalPosition() const
+{
+    if (localPositionDirty_)
+    {
+        IntVector2 pos = position_;
+        const UIElement* parent = parent_;
+
+        if (parent)
+        {
+            pos.x_ += (int)Lerp(0.0f, (float)parent->size_.x_, anchorMin_.x_);
+            pos.y_ += (int)Lerp(0.0f, (float)parent->size_.y_, anchorMin_.y_);
+            pos.x_ -= (int)(size_.x_ * pivot_.x_);
+            pos.y_ -= (int)(size_.y_ * pivot_.y_);
+
+            pos += parent_->childOffset_;
+        }
+
+        localPosition_ = pos;
+        localPositionDirty_ = false;
+    }
+
+    return localPosition_;
 }
 
 void UIElement::OnHover(const IntVector2& position, const IntVector2& screenPosition, int buttons, int qualifiers, Cursor* cursor)
@@ -1947,7 +1990,8 @@ Animatable* UIElement::FindAttributeAnimationTarget(const String& name, String& 
 
 void UIElement::MarkDirty()
 {
-    positionDirty_ = true;
+    screenPositionDirty_ = true;
+    localPositionDirty_ = true;
     opacityDirty_ = true;
     derivedColorDirty_ = true;
 
@@ -2254,5 +2298,32 @@ void UIElement::HandlePostUpdate(StringHash eventType, VariantMap& eventData)
 
     UpdateAttributeAnimations(eventData[P_TIMESTEP].GetFloat());
 }
+
+void UIElement::UseCustomMatrix(bool value)
+{
+    useCustomMatrix_ = value;
+    for (Vector<SharedPtr<UIElement> >::ConstIterator i = children_.Begin(); i != children_.End(); ++i)
+    {
+        (*i)->UseCustomMatrix(value);
+    }
+}
+
+void UIElement::SetCustomMatrix(const Matrix3x4 &matrix)
+{
+    customMatrix_ = matrix;
+}
+
+const Matrix3x4 UIElement::GetCustomMatrix() const
+{
+    Matrix3x4 tranlate;
+    auto pos = GetLocalPosition();
+    tranlate.SetTranslation(Vector3(pos.x_, pos.y_, 0.f));
+    if (parent_)
+    {
+        return parent_->GetCustomMatrix() * customMatrix_ * tranlate;
+    }
+    return customMatrix_ * tranlate;
+}
+
 
 }
