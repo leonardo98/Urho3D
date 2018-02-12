@@ -26,6 +26,7 @@
 #include "../Graphics/Texture2D.h"
 #include "../Resource/ResourceCache.h"
 #include "../UI/BorderImage.h"
+#include "../UI/Sprite.h"
 
 #include "../DebugNew.h"
 
@@ -151,48 +152,96 @@ void BorderImage::GetBatches(PODVector<UIBatch>& batches, PODVector<float>& vert
     IntVector2 uvTopLeft(imageRect_.left_, imageRect_.top_);
     uvTopLeft += offset;
 
-    // Top
-    if (border_.top_)
+    if (useCustomMatrix_)
     {
-        if (border_.left_)
-            batch.AddQuad(x, 0, border_.left_, border_.top_, uvTopLeft.x_, uvTopLeft.y_, uvBorder.left_, uvBorder.top_);
-        if (innerSize.x_)
-            batch.AddQuad(x + border_.left_, 0, innerSize.x_, border_.top_, uvTopLeft.x_ + uvBorder.left_, uvTopLeft.y_,
-                innerUvSize.x_, uvBorder.top_, tiled_);
-        if (border_.right_)
-            batch.AddQuad(x + border_.left_ + innerSize.x_, 0, border_.right_, border_.top_,
-                uvTopLeft.x_ + uvBorder.left_ + innerUvSize.x_, uvTopLeft.y_, uvBorder.right_, uvBorder.top_);
-    }
-    // Middle
-    if (innerSize.y_)
-    {
-        if (border_.left_)
-            batch.AddQuad(x, border_.top_, border_.left_, innerSize.y_, uvTopLeft.x_, uvTopLeft.y_ + uvBorder.top_,
-                uvBorder.left_, innerUvSize.y_, tiled_);
-        if (innerSize.x_)
-            batch.AddQuad(x + border_.left_, border_.top_, innerSize.x_, innerSize.y_, uvTopLeft.x_ + uvBorder.left_,
-                uvTopLeft.y_ + uvBorder.top_, innerUvSize.x_, innerUvSize.y_, tiled_);
-        if (border_.right_)
-            batch.AddQuad(x + border_.left_ + innerSize.x_, border_.top_, border_.right_, innerSize.y_,
-                uvTopLeft.x_ + uvBorder.left_ + innerUvSize.x_, uvTopLeft.y_ + uvBorder.top_, uvBorder.right_, innerUvSize.y_,
-                tiled_);
-    }
-    // Bottom
-    if (border_.bottom_)
-    {
-        if (border_.left_)
-            batch.AddQuad(x, border_.top_ + innerSize.y_, border_.left_, border_.bottom_, uvTopLeft.x_,
-                uvTopLeft.y_ + uvBorder.top_ + innerUvSize.y_, uvBorder.left_, uvBorder.bottom_);
-        if (innerSize.x_)
-            batch.AddQuad(x + border_.left_, border_.top_ + innerSize.y_, innerSize.x_, border_.bottom_,
-                uvTopLeft.x_ + uvBorder.left_, uvTopLeft.y_ + uvBorder.top_ + innerUvSize.y_, innerUvSize.x_, uvBorder.bottom_,
-                tiled_);
-        if (border_.right_)
-            batch.AddQuad(x + border_.left_ + innerSize.x_, border_.top_ + innerSize.y_, border_.right_, border_.bottom_,
-                uvTopLeft.x_ + uvBorder.left_ + innerUvSize.x_, uvTopLeft.y_ + uvBorder.top_ + innerUvSize.y_, uvBorder.right_,
-                uvBorder.bottom_);
-    }
+        const Matrix3x4 matrix = GetCustomMatrix();
 
+        // Top
+        if (border_.top_)
+        {
+            if (border_.left_)
+                batch.AddQuad(matrix, x, 0, border_.left_, border_.top_, uvTopLeft.x_, uvTopLeft.y_, uvBorder.left_, uvBorder.top_);
+            if (innerSize.x_)
+                batch.AddQuad(matrix, x + border_.left_, 0, innerSize.x_, border_.top_, uvTopLeft.x_ + uvBorder.left_, uvTopLeft.y_,
+                    innerUvSize.x_, uvBorder.top_, tiled_);
+            if (border_.right_)
+                batch.AddQuad(matrix, x + border_.left_ + innerSize.x_, 0, border_.right_, border_.top_,
+                    uvTopLeft.x_ + uvBorder.left_ + innerUvSize.x_, uvTopLeft.y_, uvBorder.right_, uvBorder.top_);
+        }
+        // Middle
+        if (innerSize.y_)
+        {
+            if (border_.left_)
+                batch.AddQuad(matrix, x, border_.top_, border_.left_, innerSize.y_, uvTopLeft.x_, uvTopLeft.y_ + uvBorder.top_,
+                    uvBorder.left_, innerUvSize.y_, tiled_);
+            if (innerSize.x_)
+                batch.AddQuad(matrix, x + border_.left_, border_.top_, innerSize.x_, innerSize.y_, uvTopLeft.x_ + uvBorder.left_,
+                    uvTopLeft.y_ + uvBorder.top_, innerUvSize.x_, innerUvSize.y_, tiled_);
+            if (border_.right_)
+                batch.AddQuad(matrix, x + border_.left_ + innerSize.x_, border_.top_, border_.right_, innerSize.y_,
+                    uvTopLeft.x_ + uvBorder.left_ + innerUvSize.x_, uvTopLeft.y_ + uvBorder.top_, uvBorder.right_, innerUvSize.y_,
+                    tiled_);
+        }
+        // Bottom
+        if (border_.bottom_)
+        {
+            if (border_.left_)
+                batch.AddQuad(matrix, x, border_.top_ + innerSize.y_, border_.left_, border_.bottom_, uvTopLeft.x_,
+                    uvTopLeft.y_ + uvBorder.top_ + innerUvSize.y_, uvBorder.left_, uvBorder.bottom_);
+            if (innerSize.x_)
+                batch.AddQuad(matrix, x + border_.left_, border_.top_ + innerSize.y_, innerSize.x_, border_.bottom_,
+                    uvTopLeft.x_ + uvBorder.left_, uvTopLeft.y_ + uvBorder.top_ + innerUvSize.y_, innerUvSize.x_, uvBorder.bottom_,
+                    tiled_);
+            if (border_.right_)
+                batch.AddQuad(matrix, x + border_.left_ + innerSize.x_, border_.top_ + innerSize.y_, border_.right_, border_.bottom_,
+                    uvTopLeft.x_ + uvBorder.left_ + innerUvSize.x_, uvTopLeft.y_ + uvBorder.top_ + innerUvSize.y_, uvBorder.right_,
+                    uvBorder.bottom_);
+        }
+    }
+    else
+    {
+        // Top
+        if (border_.top_)
+        {
+            if (border_.left_)
+                batch.AddQuad(x, 0, border_.left_, border_.top_, uvTopLeft.x_, uvTopLeft.y_, uvBorder.left_, uvBorder.top_);
+            if (innerSize.x_)
+                batch.AddQuad(x + border_.left_, 0, innerSize.x_, border_.top_, uvTopLeft.x_ + uvBorder.left_, uvTopLeft.y_,
+                    innerUvSize.x_, uvBorder.top_, tiled_);
+            if (border_.right_)
+                batch.AddQuad(x + border_.left_ + innerSize.x_, 0, border_.right_, border_.top_,
+                    uvTopLeft.x_ + uvBorder.left_ + innerUvSize.x_, uvTopLeft.y_, uvBorder.right_, uvBorder.top_);
+        }
+        // Middle
+        if (innerSize.y_)
+        {
+            if (border_.left_)
+                batch.AddQuad(x, border_.top_, border_.left_, innerSize.y_, uvTopLeft.x_, uvTopLeft.y_ + uvBorder.top_,
+                    uvBorder.left_, innerUvSize.y_, tiled_);
+            if (innerSize.x_)
+                batch.AddQuad(x + border_.left_, border_.top_, innerSize.x_, innerSize.y_, uvTopLeft.x_ + uvBorder.left_,
+                    uvTopLeft.y_ + uvBorder.top_, innerUvSize.x_, innerUvSize.y_, tiled_);
+            if (border_.right_)
+                batch.AddQuad(x + border_.left_ + innerSize.x_, border_.top_, border_.right_, innerSize.y_,
+                    uvTopLeft.x_ + uvBorder.left_ + innerUvSize.x_, uvTopLeft.y_ + uvBorder.top_, uvBorder.right_, innerUvSize.y_,
+                    tiled_);
+        }
+        // Bottom
+        if (border_.bottom_)
+        {
+            if (border_.left_)
+                batch.AddQuad(x, border_.top_ + innerSize.y_, border_.left_, border_.bottom_, uvTopLeft.x_,
+                    uvTopLeft.y_ + uvBorder.top_ + innerUvSize.y_, uvBorder.left_, uvBorder.bottom_);
+            if (innerSize.x_)
+                batch.AddQuad(x + border_.left_, border_.top_ + innerSize.y_, innerSize.x_, border_.bottom_,
+                    uvTopLeft.x_ + uvBorder.left_, uvTopLeft.y_ + uvBorder.top_ + innerUvSize.y_, innerUvSize.x_, uvBorder.bottom_,
+                    tiled_);
+            if (border_.right_)
+                batch.AddQuad(x + border_.left_ + innerSize.x_, border_.top_ + innerSize.y_, border_.right_, border_.bottom_,
+                    uvTopLeft.x_ + uvBorder.left_ + innerUvSize.x_, uvTopLeft.y_ + uvBorder.top_ + innerUvSize.y_, uvBorder.right_,
+                    uvBorder.bottom_);
+        }
+    }
     UIBatch::AddOrMerge(batch, batches);
 
     // Reset hovering for next frame

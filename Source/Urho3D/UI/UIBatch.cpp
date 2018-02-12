@@ -288,6 +288,40 @@ void UIBatch::AddQuad(int x, int y, int width, int height, int texOffsetX, int t
     }
 }
 
+void UIBatch::AddQuad(const Matrix3x4& transform, int x, int y, int width, int height, int texOffsetX, int texOffsetY, int texWidth, int texHeight, bool tiled)
+{
+    if (!(element_->HasColorGradient() || element_->GetDerivedColor().ToUInt() & 0xff000000))
+        return; // No gradient and alpha is 0, so do not add the quad
+
+    if (!tiled)
+    {
+        AddQuad(transform, x, y, width, height, texOffsetX, texOffsetY, texWidth, texHeight);
+        return;
+    }
+
+    int tileX = 0;
+    int tileY = 0;
+    int tileW = 0;
+    int tileH = 0;
+
+    while (tileY < height)
+    {
+        tileX = 0;
+        tileH = Min(height - tileY, texHeight);
+
+        while (tileX < width)
+        {
+            tileW = Min(width - tileX, texWidth);
+
+            AddQuad(transform, x + tileX, y + tileY, tileW, tileH, texOffsetX, texOffsetY, tileW, tileH);
+
+            tileX += tileW;
+        }
+
+        tileY += tileH;
+    }
+}
+
 void UIBatch::AddQuad(const Matrix3x4& transform, const IntVector2& a, const IntVector2& b, const IntVector2& c, const IntVector2& d,
     const IntVector2& texA, const IntVector2& texB, const IntVector2& texC, const IntVector2& texD)
 {

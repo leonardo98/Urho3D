@@ -238,7 +238,7 @@ void Sprite::SetShaderParameter(StringHash name, const Variant &value)
 
 const Matrix3x4& Sprite::GetTransform() const
 {
-    if (positionDirty_)
+    if (screenPositionDirty_)
     {
         Vector2 pos = floatPosition_;
 
@@ -252,7 +252,7 @@ const Matrix3x4& Sprite::GetTransform() const
             else
             {
                 const IntVector2& parentScreenPos = parent_->GetScreenPosition() + parent_->GetChildOffset();
-                parentTransform = Matrix3x4::IDENTITY;
+                parentTransform = parent_ ? parent_->GetCustomMatrix() : Matrix3x4::IDENTITY;
                 parentTransform.SetTranslation(Vector3((float)parentScreenPos.x_, (float)parentScreenPos.y_, 0.0f));
             }
 
@@ -292,7 +292,8 @@ const Matrix3x4& Sprite::GetTransform() const
         Matrix3x4 mainTransform(Vector3(pos, 0.0f), Quaternion(rotation_, Vector3::FORWARD), Vector3(scale_, 1.0f));
 
         transform_ = parentTransform * mainTransform * hotspotAdjust;
-        positionDirty_ = false;
+
+        screenPositionDirty_ = false;
 
         // Calculate an approximate screen position for GetElementAt(), or pixel-perfect child elements
         Vector3 topLeftCorner = transform_ * Vector3::ZERO;
@@ -300,6 +301,16 @@ const Matrix3x4& Sprite::GetTransform() const
     }
 
     return transform_;
+}
+
+void Sprite::SetCustomMatrix(const Matrix3x4 &matrix)
+{
+    assert("Use Sprite::SetScale, Sprite::SetPosition, Sprite::SetRotation instead of Sprite::SetCustomMatrix" && false);
+}
+
+const Matrix3x4 Sprite::GetCustomMatrix() const
+{
+    return GetTransform();
 }
 
 void Sprite::SetTextureAttr(const ResourceRef& value)

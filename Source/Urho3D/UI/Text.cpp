@@ -31,6 +31,7 @@
 #include "../UI/FontFace.h"
 #include "../UI/Text.h"
 #include "../UI/Sprite.h"
+#include "../UI/BorderImage.h"
 #include "../Resource/Localization.h"
 #include "../Resource/ResourceEvents.h"
 
@@ -70,8 +71,7 @@ Text::Text(Context* context) :
     roundStroke_(false),
     effectColor_(Color::BLACK),
     effectDepthBias_(0.0f),
-    rowHeight_(0),
-    scalable_(false)
+    rowHeight_(0)
 {
     // By default Text does not derive opacity from parent elements
     useDerivedOpacity_ = false;
@@ -125,64 +125,6 @@ void Text::ApplyAttributes()
     UpdateText();
 }
 
-const Matrix3x4& Text::GetTransform() const
-{
-    Vector2 pos(0, 0);
-    Matrix3x4 parentTransform;
-    int rowWidth = 0;
-    int rowIndex = 0;
-
-    if (rowIndex < rowWidths_.Size())
-        rowWidth = rowWidths_[rowIndex];
-
-    if (parent_)
-    {
-        Sprite* parentSprite = dynamic_cast<Sprite*>(parent_);
-        if (parentSprite)
-            parentTransform = parentSprite->GetTransform();
-        else
-        {
-            const IntVector2& parentScreenPos = parent_->GetScreenPosition() + parent_->GetChildOffset();
-            parentTransform = Matrix3x4::IDENTITY;
-            parentTransform.SetTranslation(Vector3((float)parentScreenPos.x_, (float)parentScreenPos.y_, 0.0f));
-        }
-        switch (GetHorizontalAlignment())
-        {
-        case HA_LEFT:
-            break;
-        case HA_CENTER:
-            pos.x_ += (parent_->GetSize().x_ - GetWidth()) / 2;
-            break;
-        case HA_RIGHT:
-            pos.x_ += parent_->GetSize().x_ - GetWidth();
-            break;
-        case HA_CUSTOM:
-            pos.x_ += GetPosition().x_;
-            break;
-        }
-        switch (GetVerticalAlignment())
-        {
-        case VA_TOP:
-            break;
-        case VA_CENTER:
-            pos.y_ += (float)(parent_->GetSize().y_ / 2 - GetHeight() / 2);
-            break;
-        case VA_BOTTOM:
-            pos.y_ += (float)(parent_->GetSize().y_);
-            break;
-        case HA_CUSTOM:
-            pos.y_ += GetPosition().y_;
-            break;
-        }
-    }
-    else
-        parentTransform = Matrix3x4::IDENTITY;
-    Matrix3x4 mainTransform;
-    mainTransform.SetTranslation(Vector3(pos, 0.0f));
-    transform_ = parentTransform * mainTransform;
-    return transform_;
-}
-
 void Text::GetBatches(PODVector<UIBatch>& batches, PODVector<float>& vertexData, const IntRect& currentScissor)
 {
     FontFace* face = font_ ? font_->GetFace(fontSize_) : (FontFace*)0;
@@ -191,6 +133,7 @@ void Text::GetBatches(PODVector<UIBatch>& batches, PODVector<float>& vertexData,
         hovering_ = false;
         return;
     }
+    const Matrix3x4 matrix = GetCustomMatrix();
 
     // If face has changed or char locations are not valid anymore, update before rendering
     if (charLocationsDirty_ || !fontFace_ || face != fontFace_)
@@ -209,7 +152,14 @@ void Text::GetBatches(PODVector<UIBatch>& batches, PODVector<float>& vertexData,
         UIBatch batch(this, BLEND_ALPHA, currentScissor, 0, &vertexData);
         batch.SetColor(both ? selectionColor_.Lerp(hoverColor_, 0.5f) :
             (selected_ && selectionColor_.a_ > 0.0f ? selectionColor_ : hoverColor_));
-        batch.AddQuad(0, 0, GetWidth(), GetHeight(), 0, 0);
+        if (useCustomMatrix_)
+        {
+            batch.AddQuad(matrix, 0, 0, GetWidth(), GetHeight(), 0, 0);
+        }
+        else
+        {
+            batch.AddQuad(0, 0, GetWidth(), GetHeight(), 0, 0);
+        }
         UIBatch::AddOrMerge(batch, batches);
     }
 
@@ -221,6 +171,7 @@ void Text::GetBatches(PODVector<UIBatch>& batches, PODVector<float>& vertexData,
 
         IntVector2 currentStart = charLocations_[selectionStart_].position_;
         IntVector2 currentEnd = currentStart;
+
         for (unsigned i = selectionStart_; i < selectionStart_ + selectionLength_; ++i)
         {
             // Check if row changes, and start a new quad in that case
@@ -228,8 +179,16 @@ void Text::GetBatches(PODVector<UIBatch>& batches, PODVector<float>& vertexData,
             {
                 if (charLocations_[i].position_.y_ != currentStart.y_)
                 {
-                    batch.AddQuad(currentStart.x_, currentStart.y_, currentEnd.x_ - currentStart.x_,
-                        currentEnd.y_ - currentStart.y_, 0, 0);
+                    if (useCustomMatrix_)
+                    {
+                        batch.AddQuad(matrix, currentStart.x_, currentStart.y_, currentEnd.x_ - currentStart.x_,
+                            currentEnd.y_ - currentStart.y_, 0, 0);
+                    }
+                    else
+                    {
+                        batch.AddQuad(currentStart.x_, currentStart.y_, currentEnd.x_ - currentStart.x_,
+                            currentEnd.y_ - currentStart.y_, 0, 0);
+                    }
                     currentStart = charLocations_[i].position_;
                     currentEnd = currentStart + charLocations_[i].size_;
                 }
@@ -242,9 +201,9 @@ void Text::GetBatches(PODVector<UIBatch>& batches, PODVector<float>& vertexData,
         }
         if (currentEnd != currentStart)
         {
-            if (scalable_)
+            if (useCustomMatrix_)
             {
-                batch.AddQuad(GetTransform(), currentStart.x_, currentStart.y_, currentEnd.x_ - currentStart.x_, currentEnd.y_ - currentStart.y_, 0, 0);
+                batch.AddQuad(matrix, currentStart.x_, currentStart.y_, currentEnd.x_ - currentStart.x_, currentEnd.y_ - currentStart.y_, 0, 0);
             }
             else
             {
@@ -883,17 +842,23 @@ void Text::ConstructBatch(UIBatch& pageBatch, const PODVector<GlyphLocation>& pa
     else
         pageBatch.SetColor(*color);
 
-    for (unsigned i = 0; i < pageGlyphLocation.Size(); ++i)
+    if (useCustomMatrix_)
     {
-        const GlyphLocation& glyphLocation = pageGlyphLocation[i];
-        const FontGlyph& glyph = *glyphLocation.glyph_;
-        if (scalable_)
+        Matrix3x4 matrix = GetCustomMatrix();
+        for (unsigned i = 0; i < pageGlyphLocation.Size(); ++i)
         {
-            pageBatch.AddQuad(GetTransform(), dx + glyphLocation.x_ + glyph.offsetX_, dy + glyphLocation.y_ + glyph.offsetY_, glyph.width_,
+            const GlyphLocation& glyphLocation = pageGlyphLocation[i];
+            const FontGlyph& glyph = *glyphLocation.glyph_;
+            pageBatch.AddQuad(matrix, dx + glyphLocation.x_ + glyph.offsetX_, dy + glyphLocation.y_ + glyph.offsetY_, glyph.width_,
                 glyph.height_, glyph.x_, glyph.y_);
         }
-        else
+    }
+    else
+    {
+        for (unsigned i = 0; i < pageGlyphLocation.Size(); ++i)
         {
+            const GlyphLocation& glyphLocation = pageGlyphLocation[i];
+            const FontGlyph& glyph = *glyphLocation.glyph_;
             pageBatch.AddQuad(dx + glyphLocation.x_ + glyph.offsetX_, dy + glyphLocation.y_ + glyph.offsetY_, glyph.width_,
                 glyph.height_, glyph.x_, glyph.y_);
         }
@@ -905,11 +870,6 @@ void Text::ConstructBatch(UIBatch& pageBatch, const PODVector<GlyphLocation>& pa
         for (unsigned i = startDataSize; i < dataSize; i += UI_VERTEX_SIZE)
             pageBatch.vertexData_->At(i + 2) += depthBias;
     }
-}
-
-void Text::SetScalable(bool value)
-{
-    scalable_ = value;
 }
 
 }

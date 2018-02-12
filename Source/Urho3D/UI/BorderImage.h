@@ -92,6 +92,8 @@ public:
     /// Return texture attribute.
     ResourceRef GetTextureAttr() const;
 
+    const Matrix3x4& GetTransform() const;
+
 protected:
     /// Return UI rendering batches with offset to image rectangle.
     void GetBatches

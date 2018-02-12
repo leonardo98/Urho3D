@@ -87,6 +87,7 @@ void Window::GetBatches(PODVector<UIBatch>& batches, PODVector<float>& vertexDat
 {
     if (modal_)
     {
+        const Matrix3x4 matrix = GetCustomMatrix();
         // Modal shade
         if (modalShadeColor_ != Color::TRANSPARENT)
         {
@@ -94,7 +95,14 @@ void Window::GetBatches(PODVector<UIBatch>& batches, PODVector<float>& vertexDat
             const IntVector2& rootSize = rootElement->GetSize();
             UIBatch batch(rootElement, BLEND_ALPHA, IntRect(0, 0, rootSize.x_, rootSize.y_), 0, &vertexData);
             batch.SetColor(modalShadeColor_);
-            batch.AddQuad(0, 0, rootSize.x_, rootSize.y_, 0, 0);
+            if (useCustomMatrix_)
+            {
+                batch.AddQuad(matrix, 0, 0, rootSize.x_, rootSize.y_, 0, 0);
+            }
+            else
+            {
+                batch.AddQuad(0, 0, rootSize.x_, rootSize.y_, 0, 0);
+            }
             UIBatch::AddOrMerge(batch, batches);
         }
 
@@ -106,8 +114,16 @@ void Window::GetBatches(PODVector<UIBatch>& batches, PODVector<float>& vertexDat
             IntVector2 size = GetSize();
             size.x_ -= x;
             batch.SetColor(modalFrameColor_);
-            batch.AddQuad(x - modalFrameSize_.x_, -modalFrameSize_.y_, size.x_ + 2 * modalFrameSize_.x_,
-                size.y_ + 2 * modalFrameSize_.y_, 0, 0);
+            if (useCustomMatrix_)
+            {
+                batch.AddQuad(matrix, x - modalFrameSize_.x_, -modalFrameSize_.y_, size.x_ + 2 * modalFrameSize_.x_,
+                    size.y_ + 2 * modalFrameSize_.y_, 0, 0);
+            }
+            else
+            {
+                batch.AddQuad(x - modalFrameSize_.x_, -modalFrameSize_.y_, size.x_ + 2 * modalFrameSize_.x_,
+                    size.y_ + 2 * modalFrameSize_.y_, 0, 0);
+            }
             UIBatch::AddOrMerge(batch, batches);
         }
     }
