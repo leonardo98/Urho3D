@@ -549,12 +549,28 @@ bool UIElement::OnDragDropFinish(UIElement* source)
 
 IntVector2 UIElement::ScreenToElement(const IntVector2& screenPosition)
 {
-    return screenPosition - GetScreenPosition();
+    if (useCustomMatrix_)
+    {
+        auto pos = GetCustomMatrix().Inverse() * Vector3(screenPosition.x_, screenPosition.y_, 0.f);
+        return IntVector2(pos.x_, pos.y_);
+    }
+    else
+    {
+        return screenPosition - GetScreenPosition();
+    }
 }
 
 IntVector2 UIElement::ElementToScreen(const IntVector2& position)
 {
-    return position + GetScreenPosition();
+    if (useCustomMatrix_)
+    {
+        auto pos = GetCustomMatrix() * Vector3(position.x_, position.y_, 0.f);
+        return IntVector2(pos.x_, pos.y_);
+    }
+    else
+    {
+        return position + GetScreenPosition();
+    }
 }
 
 bool UIElement::LoadXML(Deserializer& source)
@@ -1882,11 +1898,32 @@ void UIElement::AdjustScissor(IntRect& currentScissor)
 {
     if (clipChildren_)
     {
-        IntVector2 screenPos = GetScreenPosition();
-        currentScissor.left_ = Max(currentScissor.left_, screenPos.x_ + clipBorder_.left_);
-        currentScissor.top_ = Max(currentScissor.top_, screenPos.y_ + clipBorder_.top_);
-        currentScissor.right_ = Min(currentScissor.right_, screenPos.x_ + size_.x_ - clipBorder_.right_);
-        currentScissor.bottom_ = Min(currentScissor.bottom_, screenPos.y_ + size_.y_ - clipBorder_.bottom_);
+        if (useCustomMatrix_)
+        {
+            Vector3 leftTop(Max(currentScissor.left_, clipBorder_.left_)
+                , Max(currentScissor.top_, clipBorder_.top_), 0.f);
+            Vector3 rightBottom(Min(currentScissor.right_, size_.x_ - clipBorder_.right_)
+                , Min(currentScissor.bottom_, size_.y_ - clipBorder_.bottom_), 0.f);
+
+            auto matrix = GetCustomMatrix();
+
+            Vector3 leftTopConv = matrix * leftTop;
+            Vector3 rightTopConv = matrix * rightBottom;
+
+            currentScissor.left_ = leftTopConv.x_;
+            currentScissor.top_ = leftTopConv.y_ - 20;
+            currentScissor.right_ = rightTopConv.x_;
+            currentScissor.bottom_ = rightTopConv.y_ + 20;
+        }
+        else
+        {
+            IntVector2 screenPos = GetScreenPosition();
+
+            currentScissor.left_ = Max(currentScissor.left_, screenPos.x_ + clipBorder_.left_);
+            currentScissor.top_ = Max(currentScissor.top_, screenPos.y_ + clipBorder_.top_);
+            currentScissor.right_ = Min(currentScissor.right_, screenPos.x_ + size_.x_ - clipBorder_.right_);
+            currentScissor.bottom_ = Min(currentScissor.bottom_, screenPos.y_ + size_.y_ - clipBorder_.bottom_);
+        }
 
         if (currentScissor.right_ < currentScissor.left_)
             currentScissor.right_ = currentScissor.left_;
