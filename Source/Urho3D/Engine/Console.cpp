@@ -89,7 +89,7 @@ Console::Console(Context* context) :
     commandLine_->SetLayoutMode(LM_HORIZONTAL);
     commandLine_->SetLayoutSpacing(1);
     interpreters_ = commandLine_->CreateChild<DropDownList>();
-    lineEdit_ = commandLine_->CreateChild<LineEdit>();
+    lineEdit_ = commandLine_->CreateChild<LineEdit>("LineEdit");
     lineEdit_->SetFocusMode(FM_FOCUSABLE);  // Do not allow defocus with ESC
 
     closeButton_ = uiRoot->CreateChild<Button>();
