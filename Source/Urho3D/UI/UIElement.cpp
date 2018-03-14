@@ -32,6 +32,7 @@
 #include "../UI/Cursor.h"
 #include "../UI/UI.h"
 #include "../UI/UIElement.h"
+#include "../UI/Sprite.h"
 #include "../UI/UIEvents.h"
 
 #include "../DebugNew.h"
@@ -1914,6 +1915,21 @@ void UIElement::AdjustScissor(IntRect& currentScissor)
             currentScissor.top_ = leftTopConv.y_ - 20;
             currentScissor.right_ = rightTopConv.x_;
             currentScissor.bottom_ = rightTopConv.y_ + 20;
+        }
+        else if (dynamic_cast<Sprite *>(this))
+        {
+            Sprite *sprite = dynamic_cast<Sprite *>(this);
+
+            auto matrix = sprite->GetTransform();
+            Vector3 leftTop = matrix * Vector3(clipBorder_.left_, clipBorder_.top_, 0.f);
+            Vector3 rightBottom = matrix * Vector3(size_.x_ - clipBorder_.right_, size_.y_ - clipBorder_.bottom_, 0.f);
+
+            IntVector2 screenPos = GetScreenPosition();
+
+            currentScissor.left_ = Max(currentScissor.left_, leftTop.x_);
+            currentScissor.top_ = Max(currentScissor.top_, leftTop.y_);
+            currentScissor.right_ = Min(currentScissor.right_, rightBottom.x_);
+            currentScissor.bottom_ = Min(currentScissor.bottom_, rightBottom.y_);
         }
         else
         {
