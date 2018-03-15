@@ -248,7 +248,11 @@ const Matrix3x4& Sprite::GetTransform() const
         {
             Sprite* parentSprite = dynamic_cast<Sprite*>(parent_);
             if (parentSprite)
-                parentTransform = parentSprite->GetTransform();
+            {
+                Matrix3x4 childOffest(Matrix3x4::IDENTITY);
+                childOffest.SetTranslation(Vector3((float)-parent_->GetChildOffset().x_, (float)-parent_->GetChildOffset().y_, 0.0f));
+                parentTransform = parentSprite->GetTransform() * childOffest;
+            }
             else
             {
                 const IntVector2& parentScreenPos = parent_->GetScreenPosition() + parent_->GetChildOffset();
