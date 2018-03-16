@@ -452,9 +452,16 @@ bool UIElement::IsWithinScissor(const IntRect& currentScissor)
     if (!visible_)
         return false;
 
-    const IntVector2& screenPos = GetScreenPosition();
-    return screenPos.x_ < currentScissor.right_ && screenPos.x_ + GetWidth() > currentScissor.left_ &&
-           screenPos.y_ < currentScissor.bottom_ && screenPos.y_ + GetHeight() > currentScissor.top_;
+    if (useCustomMatrix_)
+    {
+        return true;
+    }
+    else
+    {
+        const IntVector2& screenPos = GetScreenPosition();
+        return screenPos.x_ < currentScissor.right_ && screenPos.x_ + GetWidth() > currentScissor.left_ &&
+            screenPos.y_ < currentScissor.bottom_ && screenPos.y_ + GetHeight() > currentScissor.top_;
+    }
 }
 
 const IntVector2& UIElement::GetScreenPosition() const
