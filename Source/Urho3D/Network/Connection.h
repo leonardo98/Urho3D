@@ -167,7 +167,9 @@ private:
     void ProcessNewNode(Node* node);
     /// Process a node that the client has already received.
     void ProcessExistingNode(Node* node, NodeReplicationState& nodeState);
-    
+    /// Return whether nodes creation is available
+    bool IsNodeCreationAvailable() const;
+
     /// Scene.
     WeakPtr<Scene> scene_;
     /// Network replication state of the scene.
@@ -198,6 +200,8 @@ private:
     bool sceneLoaded_;
     /// Show statistics flag.
     bool logStatistics_;
+    /// the number of the nodes was created (tick)
+    unsigned numberNodeCreated_;
 };
 
 

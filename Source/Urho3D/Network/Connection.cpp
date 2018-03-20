@@ -46,6 +46,7 @@ namespace Urho3D
 
 static const int STATS_INTERVAL_MSEC = 2000;
 static const int NUMBER_NODES_TO_PROCESS = 16;
+static const int NUMBER_NODES_TO_CREATION = 64;
 
 Connection::Connection(Context* context, bool isClient) :
     Object(context),
@@ -54,7 +55,8 @@ Connection::Connection(Context* context, bool isClient) :
     isClient_(isClient),
     connectPending_(false),
     sceneLoaded_(false),
-    logStatistics_(false)
+    logStatistics_(false),
+    numberNodeCreated_(0)
 {
     sceneState_.connection_ = this;
 }
@@ -168,6 +170,7 @@ void Connection::SendServerUpdate()
     if (!scene_ || !sceneLoaded_)
         return;
 
+    numberNodeCreated_ = 0;
     // Always check the root node (scene) first so that the scene-wide components get sent first,
     // and all other replicated nodes get added to the dirty set for sending the initial state
     unsigned sceneID = scene_->GetID();
@@ -632,6 +635,8 @@ Scene* Connection::GetScene() const
 
 void Connection::ProcessNode(unsigned nodeID)
 {
+    if (!IsNodeCreationAvailable())
+        return;
     // Check that we have not already processed this due to dependency recursion
     if (!nodesToProcess_.Erase(nodeID))
         return;
@@ -668,6 +673,11 @@ void Connection::ProcessNode(unsigned nodeID)
             sceneState_.dirtyNodes_.Erase(nodeID);
         }
     }
+}
+
+bool Connection::IsNodeCreationAvailable() const
+{
+    return numberNodeCreated_ < NUMBER_NODES_TO_CREATION;
 }
 
 void Connection::ProcessNewNode(Node* node)
@@ -724,6 +734,7 @@ void Connection::ProcessNewNode(Node* node)
     }
 
     SendMessage(MSG_CREATENODE, true, true, msg_);
+    ++numberNodeCreated_;
 
     nodeState.markedDirty_ = false;
     sceneState_.dirtyNodes_.Erase(node->GetID());
