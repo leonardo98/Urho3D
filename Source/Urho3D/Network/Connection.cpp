@@ -27,7 +27,6 @@
 #include "../IO/FileSystem.h"
 #include "../IO/Log.h"
 #include "../IO/MemoryBuffer.h"
-#include "../IO/PackageFile.h"
 #include "../Network/Connection.h"
 #include "../Network/Network.h"
 #include "../Network/NetworkEvents.h"
@@ -46,24 +45,11 @@ namespace Urho3D
 {
 
 static const int STATS_INTERVAL_MSEC = 2000;
+static const int NUMBER_NODES_TO_PROCESS = 16;
 
-PackageDownload::PackageDownload() :
-    totalFragments_(0),
-    checksum_(0),
-    initiated_(false)
-{
-}
-
-PackageUpload::PackageUpload() :
-    fragment_(0),
-    totalFragments_(0)
-{
-}
-
-Connection::Connection(Context* context, bool isClient, kNet::SharedPtr<kNet::MessageConnection> connection) :
+Connection::Connection(Context* context, bool isClient) :
     Object(context),
     timeStamp_(0),
-    connection_(connection),
     sendMode_(OPSM_NONE),
     isClient_(isClient),
     connectPending_(false),
@@ -71,13 +57,6 @@ Connection::Connection(Context* context, bool isClient, kNet::SharedPtr<kNet::Me
     logStatistics_(false)
 {
     sceneState_.connection_ = this;
-
-    // Store address and port now for accurate logging (kNet may already have destroyed the socket on disconnection,
-    // in which case we would log a zero address:port on disconnect)
-    kNet::EndPoint endPoint = connection_->RemoteEndPoint();
-    ///\todo Not IPv6-capable.
-    address_ = Urho3D::ToString("%d.%d.%d.%d", endPoint.ip[0], endPoint.ip[1], endPoint.ip[2], endPoint.ip[3]);
-    port_ = endPoint.port;
 }
 
 Connection::~Connection()
@@ -88,40 +67,7 @@ Connection::~Connection()
 
 void Connection::SendMessage(int msgID, bool reliable, bool inOrder, const VectorBuffer& msg, unsigned contentID)
 {
-    SendMessage(msgID, reliable, inOrder, msg.GetData(), msg.GetSize(), contentID);
-}
-
-void Connection::SendMessage(int msgID, bool reliable, bool inOrder, const unsigned char* data, unsigned numBytes,
-    unsigned contentID)
-{
-    // Make sure not to use kNet internal message ID's
-    if (msgID <= 0x4 || msgID >= 0x3ffffffe)
-    {
-        URHO3D_LOGERROR("Can not send message with reserved ID");
-        return;
-    }
-
-    if (numBytes && !data)
-    {
-        URHO3D_LOGERROR("Null pointer supplied for network message data");
-        return;
-    }
-
-    kNet::NetworkMessage* msg = connection_->StartNewMessage((unsigned long)msgID, numBytes);
-    if (!msg)
-    {
-        URHO3D_LOGERROR("Can not start new network message");
-        return;
-    }
-
-    msg->reliable = reliable;
-    msg->inOrder = inOrder;
-    msg->priority = 0;
-    msg->contentID = contentID;
-    if (numBytes)
-        memcpy(msg->data, data, numBytes);
-
-    connection_->EndAndQueueMessage(msg);
+    Send(msgID, reliable, inOrder, msg, contentID);
 }
 
 void Connection::SendRemoteEvent(StringHash eventType, bool inOrder, const VariantMap& eventData)
@@ -169,36 +115,17 @@ void Connection::SetScene(Scene* newScene)
     }
 
     scene_ = newScene;
-    sceneLoaded_ = false;
-    UnsubscribeFromEvent(E_ASYNCLOADFINISHED);
 
     if (!scene_)
         return;
 
+    sceneLoaded_ = true;
+
     if (isClient_)
     {
         sceneState_.Clear();
-
-        // When scene is assigned on the server, instruct the client to load it. This may require downloading packages
-        const Vector<SharedPtr<PackageFile> >& packages = scene_->GetRequiredPackageFiles();
-        unsigned numPackages = packages.Size();
         msg_.Clear();
-        msg_.WriteString(scene_->GetFileName());
-        msg_.WriteVLE(numPackages);
-        for (unsigned i = 0; i < numPackages; ++i)
-        {
-            PackageFile* package = packages[i];
-            msg_.WriteString(GetFileNameAndExtension(package->GetName()));
-            msg_.WriteUInt(package->GetTotalSize());
-            msg_.WriteUInt(package->GetChecksum());
-        }
         SendMessage(MSG_LOADSCENE, true, true, msg_);
-    }
-    else
-    {
-        // Make sure there is no existing async loading
-        scene_->StopAsyncLoading();
-        SubscribeToEvent(scene_, E_ASYNCLOADFINISHED, URHO3D_HANDLER(Connection, HandleAsyncLoadFinished));
     }
 }
 
@@ -236,11 +163,6 @@ void Connection::SetLogStatistics(bool enable)
     logStatistics_ = enable;
 }
 
-void Connection::Disconnect(int waitMSec)
-{
-    connection_->Disconnect(waitMSec);
-}
-
 void Connection::SendServerUpdate()
 {
     if (!scene_ || !sceneLoaded_)
@@ -256,10 +178,12 @@ void Connection::SendServerUpdate()
     nodesToProcess_.Insert(sceneState_.dirtyNodes_);
     nodesToProcess_.Erase(sceneID); // Do not process the root node twice
 
-    while (nodesToProcess_.Size())
+    int counter = 0;
+    while (nodesToProcess_.Size() && counter < NUMBER_NODES_TO_PROCESS)
     {
         unsigned nodeID = nodesToProcess_.Front();
         ProcessNode(nodeID);
+        ++counter;
     }
 }
 
@@ -285,18 +209,6 @@ void Connection::SendClientUpdate()
 
 void Connection::SendRemoteEvents()
 {
-#ifdef URHO3D_LOGGING
-    if (logStatistics_ && statsTimer_.GetMSec(false) > STATS_INTERVAL_MSEC)
-    {
-        statsTimer_.Reset();
-        char statsBuffer[256];
-        sprintf(statsBuffer, "RTT %.3f ms Pkt in %d Pkt out %d Data in %.3f KB/s Data out %.3f KB/s", connection_->RoundTripTime(),
-            (int)connection_->PacketsInPerSec(),
-            (int)connection_->PacketsOutPerSec(), connection_->BytesInPerSec() / 1000.0f, connection_->BytesOutPerSec() / 1000.0f);
-        URHO3D_LOGINFO(statsBuffer);
-    }
-#endif
-
     if (remoteEvents_.Empty())
         return;
 
@@ -323,32 +235,6 @@ void Connection::SendRemoteEvents()
     remoteEvents_.Clear();
 }
 
-void Connection::SendPackages()
-{
-    while (!uploads_.Empty() && connection_->NumOutboundMessagesPending() < 1000)
-    {
-        unsigned char buffer[PACKAGE_FRAGMENT_SIZE];
-
-        for (HashMap<StringHash, PackageUpload>::Iterator i = uploads_.Begin(); i != uploads_.End();)
-        {
-            HashMap<StringHash, PackageUpload>::Iterator current = i++;
-            PackageUpload& upload = current->second_;
-            unsigned fragmentSize =
-                Min((upload.file_->GetSize() - upload.file_->GetPosition()), PACKAGE_FRAGMENT_SIZE);
-            upload.file_->Read(buffer, fragmentSize);
-
-            msg_.Clear();
-            msg_.WriteStringHash(current->first_);
-            msg_.WriteUInt(upload.fragment_++);
-            msg_.Write(buffer, fragmentSize);
-            SendMessage(MSG_PACKAGEDATA, true, false, msg_);
-
-            // Check if upload finished
-            if (upload.fragment_ == upload.totalFragments_)
-                uploads_.Erase(current);
-        }
-    }
-}
 
 void Connection::ProcessPendingLatestData()
 {
@@ -401,22 +287,10 @@ bool Connection::ProcessMessage(int msgID, MemoryBuffer& msg)
         ProcessControls(msgID, msg);
         break;
 
-    case MSG_SCENELOADED:
-        ProcessSceneLoaded(msgID, msg);
-        break;
-
-    case MSG_REQUESTPACKAGE:
-    case MSG_PACKAGEDATA:
-        ProcessPackageDownload(msgID, msg);
-        break;
-
     case MSG_LOADSCENE:
         ProcessLoadScene(msgID, msg);
         break;
 
-    case MSG_SCENECHECKSUMERROR:
-        ProcessSceneChecksumError(msgID, msg);
-        break;
 
     case MSG_CREATENODE:
     case MSG_NODEDELTAUPDATE:
@@ -434,10 +308,6 @@ bool Connection::ProcessMessage(int msgID, MemoryBuffer& msg)
         ProcessRemoteEvent(msgID, msg);
         break;
 
-    case MSG_PACKAGEINFO:
-        ProcessPackageInfo(msgID, msg);
-        break;
-
     default:
         processed = false;
         break;
@@ -450,7 +320,7 @@ void Connection::ProcessLoadScene(int msgID, MemoryBuffer& msg)
 {
     if (IsClient())
     {
-        URHO3D_LOGWARNING("Received unexpected LoadScene message from client " + ToString());
+        URHO3D_LOGWARNING("Received unexpected LoadScene message from client");
         return;
     }
 
@@ -460,50 +330,11 @@ void Connection::ProcessLoadScene(int msgID, MemoryBuffer& msg)
         return;
     }
 
-    // Store the scene file name we need to eventually load
-    sceneFileName_ = msg.ReadString();
-
     // Clear previous pending latest data and package downloads if any
     nodeLatestData_.Clear();
     componentLatestData_.Clear();
-    downloads_.Clear();
 
-    // In case we have joined other scenes in this session, remove first all downloaded package files from the resource system
-    // to prevent resource conflicts
-    ResourceCache* cache = GetSubsystem<ResourceCache>();
-    const String& packageCacheDir = GetSubsystem<Network>()->GetPackageCacheDir();
-
-    Vector<SharedPtr<PackageFile> > packages = cache->GetPackageFiles();
-    for (unsigned i = 0; i < packages.Size(); ++i)
-    {
-        PackageFile* package = packages[i];
-        if (!package->GetName().Find(packageCacheDir))
-            cache->RemovePackageFile(package, true);
-    }
-
-    // Now check which packages we have in the resource cache or in the download cache, and which we need to download
-    unsigned numPackages = msg.ReadVLE();
-    if (!RequestNeededPackages(numPackages, msg))
-    {
-        OnSceneLoadFailed();
-        return;
-    }
-
-    // If no downloads were queued, can load the scene directly
-    if (downloads_.Empty())
-        OnPackagesReady();
-}
-
-void Connection::ProcessSceneChecksumError(int msgID, MemoryBuffer& msg)
-{
-    if (IsClient())
-    {
-        URHO3D_LOGWARNING("Received unexpected SceneChecksumError message from client " + ToString());
-        return;
-    }
-
-    URHO3D_LOGERROR("Scene checksum error");
-    OnSceneLoadFailed();
+    sceneLoaded_ = true;
 }
 
 void Connection::ProcessSceneUpdate(int msgID, MemoryBuffer& msg)
@@ -512,7 +343,7 @@ void Connection::ProcessSceneUpdate(int msgID, MemoryBuffer& msg)
     /// while the application is minimized
     if (IsClient())
     {
-        URHO3D_LOGWARNING("Received unexpected SceneUpdate message from client " + ToString());
+        URHO3D_LOGWARNING("Received unexpected SceneUpdate message from client ");
         return;
     }
 
@@ -714,147 +545,6 @@ void Connection::ProcessSceneUpdate(int msgID, MemoryBuffer& msg)
     }
 }
 
-void Connection::ProcessPackageDownload(int msgID, MemoryBuffer& msg)
-{
-    switch (msgID)
-    {
-    case MSG_REQUESTPACKAGE:
-        if (!IsClient())
-        {
-            URHO3D_LOGWARNING("Received unexpected RequestPackage message from server");
-            return;
-        }
-        else
-        {
-            String name = msg.ReadString();
-
-            if (!scene_)
-            {
-                URHO3D_LOGWARNING("Received a RequestPackage message without an assigned scene from client " + ToString());
-                return;
-            }
-
-            // The package must be one of those required by the scene
-            const Vector<SharedPtr<PackageFile> >& packages = scene_->GetRequiredPackageFiles();
-            for (unsigned i = 0; i < packages.Size(); ++i)
-            {
-                PackageFile* package = packages[i];
-                String packageFullName = package->GetName();
-                if (!GetFileNameAndExtension(packageFullName).Compare(name, false))
-                {
-                    StringHash nameHash(name);
-
-                    // Do not restart upload if already exists
-                    if (uploads_.Contains(nameHash))
-                    {
-                        URHO3D_LOGWARNING("Received a request for package " + name + " already in transfer");
-                        return;
-                    }
-
-                    // Try to open the file now
-                    SharedPtr<File> file(new File(context_, packageFullName));
-                    if (!file->IsOpen())
-                    {
-                        URHO3D_LOGERROR("Failed to transmit package file " + name);
-                        SendPackageError(name);
-                        return;
-                    }
-
-                    URHO3D_LOGINFO("Transmitting package file " + name + " to client " + ToString());
-
-                    uploads_[nameHash].file_ = file;
-                    uploads_[nameHash].fragment_ = 0;
-                    uploads_[nameHash].totalFragments_ = (file->GetSize() + PACKAGE_FRAGMENT_SIZE - 1) / PACKAGE_FRAGMENT_SIZE;
-                    return;
-                }
-            }
-
-            URHO3D_LOGERROR("Client requested an unexpected package file " + name);
-            // Send the name hash only to indicate a failed download
-            SendPackageError(name);
-            return;
-        }
-        break;
-
-    case MSG_PACKAGEDATA:
-        if (IsClient())
-        {
-            URHO3D_LOGWARNING("Received unexpected PackageData message from client");
-            return;
-        }
-        else
-        {
-            StringHash nameHash = msg.ReadStringHash();
-
-            HashMap<StringHash, PackageDownload>::Iterator i = downloads_.Find(nameHash);
-            // In case of being unable to create the package file into the cache, we will still receive all data from the server.
-            // Simply disregard it
-            if (i == downloads_.End())
-                return;
-
-            PackageDownload& download = i->second_;
-
-            // If no further data, this is an error reply
-            if (msg.IsEof())
-            {
-                OnPackageDownloadFailed(download.name_);
-                return;
-            }
-
-            // If file has not yet been opened, try to open now. Prepend the checksum to the filename to allow multiple versions
-            if (!download.file_)
-            {
-                download.file_ = new File(context_,
-                    GetSubsystem<Network>()->GetPackageCacheDir() + ToStringHex(download.checksum_) + "_" + download.name_,
-                    FILE_WRITE);
-                if (!download.file_->IsOpen())
-                {
-                    OnPackageDownloadFailed(download.name_);
-                    return;
-                }
-            }
-
-            // Write the fragment data to the proper index
-            unsigned char buffer[PACKAGE_FRAGMENT_SIZE];
-            unsigned index = msg.ReadUInt();
-            unsigned fragmentSize = msg.GetSize() - msg.GetPosition();
-
-            msg.Read(buffer, fragmentSize);
-            download.file_->Seek(index * PACKAGE_FRAGMENT_SIZE);
-            download.file_->Write(buffer, fragmentSize);
-            download.receivedFragments_.Insert(index);
-
-            // Check if all fragments received
-            if (download.receivedFragments_.Size() == download.totalFragments_)
-            {
-                URHO3D_LOGINFO("Package " + download.name_ + " downloaded successfully");
-
-                // Instantiate the package and add to the resource system, as we will need it to load the scene
-                download.file_->Close();
-                GetSubsystem<ResourceCache>()->AddPackageFile(download.file_->GetName(), 0);
-
-                // Then start the next download if there are more
-                downloads_.Erase(i);
-                if (downloads_.Empty())
-                    OnPackagesReady();
-                else
-                {
-                    PackageDownload& nextDownload = downloads_.Begin()->second_;
-
-                    URHO3D_LOGINFO("Requesting package " + nextDownload.name_ + " from server");
-                    msg_.Clear();
-                    msg_.WriteString(nextDownload.name_);
-                    SendMessage(MSG_REQUESTPACKAGE, true, true, msg_);
-                    nextDownload.initiated_ = true;
-                }
-            }
-        }
-        break;
-
-    default: break;
-    }
-}
-
 void Connection::ProcessIdentity(int msgID, MemoryBuffer& msg)
 {
     if (!IsClient())
@@ -872,9 +562,7 @@ void Connection::ProcessIdentity(int msgID, MemoryBuffer& msg)
     eventData[P_ALLOW] = true;
     SendEvent(E_CLIENTIDENTITY, eventData);
 
-    // If connection was denied as a response to the identity event, disconnect now
-    if (!eventData[P_ALLOW].GetBool())
-        Disconnect();
+    sceneLoaded_ = true;
 }
 
 void Connection::ProcessControls(int msgID, MemoryBuffer& msg)
@@ -901,40 +589,6 @@ void Connection::ProcessControls(int msgID, MemoryBuffer& msg)
         rotation_ = msg.ReadPackedQuaternion();
 }
 
-void Connection::ProcessSceneLoaded(int msgID, MemoryBuffer& msg)
-{
-    if (!IsClient())
-    {
-        URHO3D_LOGWARNING("Received unexpected SceneLoaded message from server");
-        return;
-    }
-
-    if (!scene_)
-    {
-        URHO3D_LOGWARNING("Received a SceneLoaded message without an assigned scene from client " + ToString());
-        return;
-    }
-
-    unsigned checksum = msg.ReadUInt();
-
-    if (checksum != scene_->GetChecksum())
-    {
-        URHO3D_LOGINFO("Scene checksum error from client " + ToString());
-        msg_.Clear();
-        SendMessage(MSG_SCENECHECKSUMERROR, true, true, msg_);
-        OnSceneLoadFailed();
-    }
-    else
-    {
-        sceneLoaded_ = true;
-
-        using namespace ClientSceneLoaded;
-
-        VariantMap& eventData = GetEventDataMap();
-        eventData[P_CONNECTION] = this;
-        SendEvent(E_CLIENTSCENELOADED, eventData);
-    }
-}
 
 void Connection::ProcessRemoteEvent(int msgID, MemoryBuffer& msg)
 {
@@ -943,11 +597,6 @@ void Connection::ProcessRemoteEvent(int msgID, MemoryBuffer& msg)
     if (msgID == MSG_REMOTEEVENT)
     {
         StringHash eventType = msg.ReadStringHash();
-        if (!GetSubsystem<Network>()->CheckRemoteEvent(eventType))
-        {
-            URHO3D_LOGWARNING("Discarding not allowed remote event " + eventType.ToString());
-            return;
-        }
 
         VariantMap eventData = msg.ReadVariantMap();
         eventData[P_CONNECTION] = this;
@@ -963,12 +612,7 @@ void Connection::ProcessRemoteEvent(int msgID, MemoryBuffer& msg)
 
         unsigned nodeID = msg.ReadNetID();
         StringHash eventType = msg.ReadStringHash();
-        if (!GetSubsystem<Network>()->CheckRemoteEvent(eventType))
-        {
-            URHO3D_LOGWARNING("Discarding not allowed remote event " + eventType.ToString());
-            return;
-        }
-
+       
         VariantMap eventData = msg.ReadVariantMap();
         Node* sender = scene_->GetNode(nodeID);
         if (!sender)
@@ -981,124 +625,9 @@ void Connection::ProcessRemoteEvent(int msgID, MemoryBuffer& msg)
     }
 }
 
-kNet::MessageConnection* Connection::GetMessageConnection() const
-{
-    return const_cast<kNet::MessageConnection*>(connection_.ptr());
-}
-
 Scene* Connection::GetScene() const
 {
     return scene_;
-}
-
-bool Connection::IsConnected() const
-{
-    return connection_->GetConnectionState() == kNet::ConnectionOK;
-}
-
-float Connection::GetRoundTripTime() const
-{
-    return connection_->RoundTripTime();
-}
-
-float Connection::GetLastHeardTime() const
-{
-    return connection_->LastHeardTime();
-}
-
-float Connection::GetBytesInPerSec() const
-{
-    return connection_->BytesInPerSec();
-}
-
-float Connection::GetBytesOutPerSec() const
-{
-    return connection_->BytesOutPerSec();
-}
-
-float Connection::GetPacketsInPerSec() const
-{
-    return connection_->PacketsInPerSec();
-}
-
-float Connection::GetPacketsOutPerSec() const
-{
-    return connection_->PacketsOutPerSec();
-}
-
-String Connection::ToString() const
-{
-    return GetAddress() + ":" + String(GetPort());
-}
-
-unsigned Connection::GetNumDownloads() const
-{
-    return downloads_.Size();
-}
-
-const String& Connection::GetDownloadName() const
-{
-    for (HashMap<StringHash, PackageDownload>::ConstIterator i = downloads_.Begin(); i != downloads_.End(); ++i)
-    {
-        if (i->second_.initiated_)
-            return i->second_.name_;
-    }
-    return String::EMPTY;
-}
-
-float Connection::GetDownloadProgress() const
-{
-    for (HashMap<StringHash, PackageDownload>::ConstIterator i = downloads_.Begin(); i != downloads_.End(); ++i)
-    {
-        if (i->second_.initiated_)
-            return (float)i->second_.receivedFragments_.Size() / (float)i->second_.totalFragments_;
-    }
-    return 1.0f;
-}
-
-void Connection::SendPackageToClient(PackageFile* package)
-{
-    if (!scene_)
-        return;
-
-    if (!IsClient())
-    {
-        URHO3D_LOGERROR("SendPackageToClient can be called on the server only");
-        return;
-    }
-    if (!package)
-    {
-        URHO3D_LOGERROR("Null package specified for SendPackageToClient");
-        return;
-    }
-
-    msg_.Clear();
-
-    String filename = GetFileNameAndExtension(package->GetName());
-    msg_.WriteString(filename);
-    msg_.WriteUInt(package->GetTotalSize());
-    msg_.WriteUInt(package->GetChecksum());
-    SendMessage(MSG_PACKAGEINFO, true, true, msg_);
-}
-
-void Connection::ConfigureNetworkSimulator(int latencyMs, float packetLoss)
-{
-    if (connection_)
-    {
-        kNet::NetworkSimulator& simulator = connection_->NetworkSendSimulator();
-        simulator.enabled = latencyMs > 0 || packetLoss > 0.0f;
-        simulator.constantPacketSendDelay = (float)latencyMs;
-        simulator.packetLossRate = packetLoss;
-    }
-}
-
-void Connection::HandleAsyncLoadFinished(StringHash eventType, VariantMap& eventData)
-{
-    sceneLoaded_ = true;
-
-    msg_.Clear();
-    msg_.WriteUInt(scene_->GetChecksum());
-    SendMessage(MSG_SCENELOADED, true, true, msg_);
 }
 
 void Connection::ProcessNode(unsigned nodeID)
@@ -1376,174 +905,73 @@ void Connection::ProcessExistingNode(Node* node, NodeReplicationState& nodeState
     sceneState_.dirtyNodes_.Erase(node->GetID());
 }
 
-bool Connection::RequestNeededPackages(unsigned numPackages, MemoryBuffer& msg)
+
+KNetConnection::KNetConnection(Context* context, bool isClient,
+    kNet::SharedPtr<kNet::MessageConnection> connection)
+    : Connection(context, isClient)
+    , connection_(connection)
 {
-    ResourceCache* cache = GetSubsystem<ResourceCache>();
-    const String& packageCacheDir = GetSubsystem<Network>()->GetPackageCacheDir();
+    // Store address and port now for accurate logging (kNet may already have destroyed the socket on disconnection,
+    // in which case we would log a zero address:port on disconnect)
+    kNet::EndPoint endPoint = connection_->RemoteEndPoint();
+    ///\todo Not IPv6-capable.
+    address_ = Urho3D::ToString("%d.%d.%d.%d", endPoint.ip[0], endPoint.ip[1], endPoint.ip[2], endPoint.ip[3]);
+    port_ = endPoint.port;
 
-    Vector<SharedPtr<PackageFile> > packages = cache->GetPackageFiles();
-    Vector<String> downloadedPackages;
-    bool packagesScanned = false;
+}
 
-    for (unsigned i = 0; i < numPackages; ++i)
+bool KNetConnection::Send(int msgID, bool reliable, bool inOrder, const VectorBuffer& msg, unsigned contentID)
+{
+    // Make sure not to use kNet internal message ID's
+    if (msgID <= 0x4 || msgID >= 0x3ffffffe)
     {
-        String name = msg.ReadString();
-        unsigned fileSize = msg.ReadUInt();
-        unsigned checksum = msg.ReadUInt();
-        String checksumString = ToStringHex(checksum);
-        bool found = false;
-
-        // Check first the resource cache
-        for (unsigned j = 0; j < packages.Size(); ++j)
-        {
-            PackageFile* package = packages[j];
-            if (!GetFileNameAndExtension(package->GetName()).Compare(name, false) && package->GetTotalSize() == fileSize &&
-                package->GetChecksum() == checksum)
-            {
-                found = true;
-                break;
-            }
-        }
-
-        if (found)
-            continue;
-
-        if (!packagesScanned)
-        {
-            if (packageCacheDir.Empty())
-            {
-                URHO3D_LOGERROR("Can not check/download required packages, as package cache directory is not set");
-                return false;
-            }
-
-            GetSubsystem<FileSystem>()->ScanDir(downloadedPackages, packageCacheDir, "*.*", SCAN_FILES, false);
-            packagesScanned = true;
-        }
-
-        // Then the download cache
-        for (unsigned j = 0; j < downloadedPackages.Size(); ++j)
-        {
-            const String& fileName = downloadedPackages[j];
-            // In download cache, package file name format is checksum_packagename
-            if (!fileName.Find(checksumString) && !fileName.Substring(9).Compare(name, false))
-            {
-                // Name matches. Check file size and actual checksum to be sure
-                SharedPtr<PackageFile> newPackage(new PackageFile(context_, packageCacheDir + fileName));
-                if (newPackage->GetTotalSize() == fileSize && newPackage->GetChecksum() == checksum)
-                {
-                    // Add the package to the resource system now, as we will need it to load the scene
-                    cache->AddPackageFile(newPackage, 0);
-                    found = true;
-                    break;
-                }
-            }
-        }
-
-        // Package not found, need to request a download
-        if (!found)
-            RequestPackage(name, fileSize, checksum);
+        URHO3D_LOGERROR("Can not send message with reserved ID");
+        return false;
     }
 
+    kNet::NetworkMessage* kNetMsg = connection_->StartNewMessage((unsigned long)msgID, msg.GetSize());
+    if (!kNetMsg)
+    {
+        URHO3D_LOGERROR("Can not start new network message");
+        return false;
+    }
+
+    kNetMsg->reliable = reliable;
+    kNetMsg->inOrder = inOrder;
+    kNetMsg->priority = 0;
+    kNetMsg->contentID = 0;
+    if (msg.GetSize())
+        memcpy(kNetMsg->data, msg.GetData(), msg.GetSize());
+
+    connection_->EndAndQueueMessage(kNetMsg);
     return true;
 }
 
-void Connection::RequestPackage(const String& name, unsigned fileSize, unsigned checksum)
+void KNetConnection::Disconnect(int waitMSec)
 {
-    StringHash nameHash(name);
-    if (downloads_.Contains(nameHash))
-        return; // Download already exists
+    connection_->Disconnect(waitMSec);
+}
 
-    PackageDownload& download = downloads_[nameHash];
-    download.name_ = name;
-    download.totalFragments_ = (fileSize + PACKAGE_FRAGMENT_SIZE - 1) / PACKAGE_FRAGMENT_SIZE;
-    download.checksum_ = checksum;
+kNet::MessageConnection* KNetConnection::GetMessageConnection() const
+{
+    return const_cast<kNet::MessageConnection*>(connection_.ptr());
+}
 
-    // Start download now only if no existing downloads, else wait for the existing ones to finish
-    if (downloads_.Size() == 1)
+void KNetConnection::ConfigureNetworkSimulator(int latencyMs, float packetLoss)
+{
+    if (connection_)
     {
-        URHO3D_LOGINFO("Requesting package " + name + " from server");
-        msg_.Clear();
-        msg_.WriteString(name);
-        SendMessage(MSG_REQUESTPACKAGE, true, true, msg_);
-        download.initiated_ = true;
+        kNet::NetworkSimulator& simulator = connection_->NetworkSendSimulator();
+        simulator.enabled = latencyMs > 0 || packetLoss > 0.0f;
+        simulator.constantPacketSendDelay = (float)latencyMs;
+        simulator.packetLossRate = packetLoss;
     }
 }
 
-void Connection::SendPackageError(const String& name)
+String KNetConnection::ToString() const
 {
-    msg_.Clear();
-    msg_.WriteStringHash(name);
-    SendMessage(MSG_PACKAGEDATA, true, false, msg_);
+    return address_ + ":" + String(port_);
 }
 
-void Connection::OnSceneLoadFailed()
-{
-    sceneLoaded_ = false;
-
-    using namespace NetworkSceneLoadFailed;
-
-    VariantMap& eventData = GetEventDataMap();
-    eventData[P_CONNECTION] = this;
-    SendEvent(E_NETWORKSCENELOADFAILED, eventData);
-}
-
-void Connection::OnPackageDownloadFailed(const String& name)
-{
-    URHO3D_LOGERROR("Download of package " + name + " failed");
-    // As one package failed, we can not join the scene in any case. Clear the downloads
-    downloads_.Clear();
-    OnSceneLoadFailed();
-}
-
-void Connection::OnPackagesReady()
-{
-    if (!scene_)
-        return;
-
-    // If sceneLoaded_ is true, we may have received additional package downloads while already joined in a scene.
-    // In that case the scene should not be loaded.
-    if (sceneLoaded_)
-        return;
-
-    if (sceneFileName_.Empty())
-    {
-        // If the scene filename is empty, just clear the scene of all existing replicated content, and send the loaded reply
-        scene_->Clear(true, false);
-        sceneLoaded_ = true;
-
-        msg_.Clear();
-        msg_.WriteUInt(scene_->GetChecksum());
-        SendMessage(MSG_SCENELOADED, true, true, msg_);
-    }
-    else
-    {
-        // Otherwise start the async loading process
-        String extension = GetExtension(sceneFileName_);
-        SharedPtr<File> file = GetSubsystem<ResourceCache>()->GetFile(sceneFileName_);
-        bool success;
-
-        if (extension == ".xml")
-            success = scene_->LoadAsyncXML(file);
-        else
-            success = scene_->LoadAsync(file);
-
-        if (!success)
-            OnSceneLoadFailed();
-    }
-}
-
-void Connection::ProcessPackageInfo(int msgID, MemoryBuffer& msg)
-{
-    if (!scene_)
-        return;
-
-    if (IsClient())
-    {
-        URHO3D_LOGWARNING("Received unexpected packages info message from client");
-        return;
-    }
-
-    RequestNeededPackages(1, msg);
-}
 
 }

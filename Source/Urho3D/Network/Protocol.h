@@ -63,6 +63,10 @@ static const int MSG_REMOTEEVENT = 0x14;
 static const int MSG_REMOTENODEEVENT = 0x15;
 /// Server->client: info about package.
 static const int MSG_PACKAGEINFO = 0x16;
+/// Client->server: ping
+static const int MSG_PING = 0x0100;
+/// Server->client: ping response
+static const int MSG_PING_RESPONSE = 0x0101;
 
 /// Fixed content ID for client controls update.
 static const unsigned CONTROLS_CONTENT_ID = 1;

@@ -99,8 +99,6 @@ public:
     void UnregisterAllRemoteEvents();
     /// Set the package download cache directory.
     void SetPackageCacheDir(const String& path);
-    /// Trigger all client connections in the specified scene to download a package file from the server. Can be used to download additional resource packages when clients are already joined in the scene. The package must have been added as a requirement to the scene, or else the eventual download will fail.
-    void SendPackageToClients(Scene* scene, PackageFile* package);
     /// Perform an HTTP request to the specified URL. Empty verb defaults to a GET request. Return a request object which can be used to read the response data.
     SharedPtr<HttpRequest> MakeHttpRequest
         (const String& url, const String& verb = String::EMPTY, const Vector<String>& headers = Vector<String>(),
@@ -149,9 +147,9 @@ private:
     /// kNet instance.
     UniquePtr<kNet::Network> network_;
     /// Client's server connection.
-    SharedPtr<Connection> serverConnection_;
+    SharedPtr<KNetConnection> serverConnection_;
     /// Server's client connections.
-    HashMap<kNet::MessageConnection*, SharedPtr<Connection> > clientConnections_;
+    HashMap<kNet::MessageConnection*, SharedPtr<KNetConnection> > clientConnections_;
     /// Allowed remote events.
     HashSet<StringHash> allowedRemoteEvents_;
     /// Remote event fixed blacklist.
