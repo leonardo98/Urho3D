@@ -1908,20 +1908,19 @@ void UIElement::AdjustScissor(IntRect& currentScissor)
     {
         if (useCustomMatrix_)
         {
-            Vector3 leftTop(Max(currentScissor.left_, clipBorder_.left_)
-                , Max(currentScissor.top_, clipBorder_.top_), 0.f);
-            Vector3 rightBottom(Min(currentScissor.right_, size_.x_ - clipBorder_.right_)
-                , Min(currentScissor.bottom_, size_.y_ - clipBorder_.bottom_), 0.f);
+            Vector3 leftTop(clipBorder_.left_, clipBorder_.top_, 0.f);
+            Vector3 rightBottom(size_.x_ - clipBorder_.right_
+                , size_.y_ - clipBorder_.bottom_, 0.f);
 
             auto matrix = GetCustomMatrix();
 
             Vector3 leftTopConv = matrix * leftTop;
             Vector3 rightTopConv = matrix * rightBottom;
 
-            currentScissor.left_ = leftTopConv.x_;
-            currentScissor.top_ = leftTopConv.y_ - 20;
-            currentScissor.right_ = rightTopConv.x_;
-            currentScissor.bottom_ = rightTopConv.y_ + 20;
+            currentScissor.left_ = Max(currentScissor.left_, leftTopConv.x_);
+            currentScissor.top_ = Max(currentScissor.top_, leftTopConv.y_);
+            currentScissor.right_ = Min(currentScissor.right_, rightTopConv.x_);
+            currentScissor.bottom_ = Min(currentScissor.bottom_, rightTopConv.y_);
         }
         else if (dynamic_cast<Sprite *>(this))
         {
