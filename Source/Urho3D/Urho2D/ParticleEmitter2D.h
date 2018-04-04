@@ -117,7 +117,8 @@ public:
     /// Return sprite attribute.
     ResourceRef GetSpriteAttr() const;
 
-private:
+protected:
+
     /// Handle scene being assigned.
     virtual void OnSceneSet(Scene* scene);
     /// Recalculate the world-space bounding box.
@@ -127,15 +128,17 @@ private:
     /// Update source batches.
     virtual void UpdateSourceBatches();
     /// Update material.
-    void UpdateMaterial();
+    virtual void UpdateMaterial();
     /// Handle scene post update.
     void HandleScenePostUpdate(StringHash eventType, VariantMap& eventData);
     /// Update.
-    void Update(float timeStep);
+    virtual void Update(float timeStep);
     /// Emit particle.
     bool EmitParticle(const Vector3& worldPosition, float worldAngle, float worldScale);
     /// Update particle.
     void UpdateParticle(Particle2D& particle, float timeStep, const Vector3& worldPosition, float worldScale);
+
+private:
 
     /// Particle effect.
     SharedPtr<ParticleEffect2D> effect_;

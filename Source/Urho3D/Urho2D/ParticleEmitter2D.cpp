@@ -32,6 +32,7 @@
 #include "../Urho2D/ParticleEmitter2D.h"
 #include "../Urho2D/Renderer2D.h"
 #include "../Urho2D/Sprite2D.h"
+#include "../Urho2D/SpriteSheet2D.h"
 
 #include "../DebugNew.h"
 
@@ -96,7 +97,7 @@ void ParticleEmitter2D::SetEffect(ParticleEffect2D* model)
     if (!effect_)
         return;
 
-    SetSprite(effect_->GetSprite());
+    SetSprite(effect_->GetSpriteSheet()->GetSprite(effect_->GetViewAnimation()));
     SetBlendMode(effect_->GetBlendMode());
     SetMaxParticles((unsigned)effect_->GetMaxParticles());
 

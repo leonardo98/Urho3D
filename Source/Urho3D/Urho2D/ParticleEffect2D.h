@@ -30,6 +30,7 @@ namespace Urho3D
 
 class XMLElement;
 class Sprite2D;
+class SpriteSheet2D;
 
 /// 2D particle emitter types.
 enum EmitterType2D
@@ -59,7 +60,7 @@ public:
     virtual bool Save(Serializer& dest) const;
 
     /// Set sprite.
-    void SetSprite(Sprite2D* sprite);
+    void SetSpriteSheet(SpriteSheet2D* sprite);
     /// Set source position variance.
     void SetSourcePositionVariance(const Vector2& sourcePositionVariance);
     /// Set speed.
@@ -132,7 +133,7 @@ public:
     SharedPtr<ParticleEffect2D> Clone(const String& cloneName = String::EMPTY) const;
 
     /// Return sprite.
-    Sprite2D* GetSprite() const { return sprite_; }
+    SpriteSheet2D* GetSpriteSheet() const { return sprite_; }
 
     /// Return source position variance.
     const Vector2& GetSourcePositionVariance() const { return sourcePositionVariance_; }
@@ -236,6 +237,12 @@ public:
     /// Return rotation end variance.
     float GetRotationEndVariance() const { return rotationEndVariance_; }
 
+    /// Returm view layer
+    unsigned GetViewLayer() const { return viewLayer_; }
+
+    /// Return view animation
+    const String& GetViewAnimation() const { return viewAnimation_; }
+
 private:
     /// Read integer.
     int ReadInt(const XMLElement& element, const String& name) const;
@@ -254,8 +261,8 @@ private:
     /// Write Vector2.
     void WriteVector2(XMLElement& element, const String& name, const Vector2& value) const;
 
-    /// Sprite.
-    SharedPtr<Sprite2D> sprite_;
+    /// Sprite sheet
+    SharedPtr<SpriteSheet2D> sprite_;
     /// Source position variance.
     Vector2 sourcePositionVariance_;
     /// Speed.
@@ -326,6 +333,10 @@ private:
     float rotationEndVariance_;
     /// Sprite name acquired during BeginLoad().
     String loadSpriteName_;
+    /// Layer
+    unsigned viewLayer_;
+    /// animation
+    String viewAnimation_;
 };
 
 }

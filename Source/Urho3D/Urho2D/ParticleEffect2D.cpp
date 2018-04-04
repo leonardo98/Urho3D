@@ -29,6 +29,7 @@
 #include "../Resource/XMLFile.h"
 #include "../Urho2D/ParticleEffect2D.h"
 #include "../Urho2D/Sprite2D.h"
+#include "../Urho2D/SpriteSheet2D.h"
 
 #include "../DebugNew.h"
 
@@ -120,11 +121,15 @@ bool ParticleEffect2D::BeginLoad(Deserializer& source)
     if (!rootElem)
         return false;
 
-    String texture = rootElem.GetChild("texture").GetAttribute("name");
-    loadSpriteName_ = GetParentPath(GetName()) + texture;
+    XMLElement viewElement = rootElem.GetChild("view");
+    String sheetName = viewElement.GetChild("atlas").GetAttribute("value");
+    loadSpriteName_ = GetParentPath(GetName()) + sheetName;
     // If async loading, request the sprite beforehand
     if (GetAsyncLoadState() == ASYNC_LOADING)
-        GetSubsystem<ResourceCache>()->BackgroundLoadResource<Sprite2D>(loadSpriteName_, true, this);
+        GetSubsystem<ResourceCache>()->BackgroundLoadResource<SpriteSheet2D>(loadSpriteName_, true, this);
+
+    viewAnimation_ = viewElement.GetChild("animation").GetAttribute("value");
+    viewLayer_ = ReadInt(viewElement, "layer");
 
     sourcePositionVariance_ = ReadVector2(rootElem, "sourcePositionVariance");
 
@@ -208,7 +213,7 @@ bool ParticleEffect2D::EndLoad()
     if (!loadSpriteName_.Empty())
     {
         ResourceCache* cache = GetSubsystem<ResourceCache>();
-        sprite_ = cache->GetResource<Sprite2D>(loadSpriteName_);
+        sprite_ = cache->GetResource<SpriteSheet2D>(loadSpriteName_);
         if (!sprite_)
             URHO3D_LOGERROR("Could not load sprite " + loadSpriteName_ + " for particle effect");
 
@@ -290,7 +295,7 @@ bool ParticleEffect2D::Save(Serializer& dest) const
     return xmlFile.Save(dest);
 }
 
-void ParticleEffect2D::SetSprite(Sprite2D* sprite)
+void ParticleEffect2D::SetSpriteSheet(SpriteSheet2D* sprite)
 {
     sprite_ = sprite;
 }
