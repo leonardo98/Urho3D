@@ -640,6 +640,8 @@ public:
     virtual void SetCustomMatrix(const Matrix3x4 &matrix);
     virtual const Matrix3x4 GetCustomMatrix() const;
 
+    void SetBatchMatrix(Matrix3x4 *matrix);
+
 protected:
     /// Handle attribute animation added.
     virtual void OnAttributeAnimationAdded();
@@ -659,6 +661,8 @@ protected:
     virtual bool FilterImplicitAttributes(XMLElement& dest) const;
     /// Update anchored size & position. Only called when anchoring is enabled.
     void UpdateAnchoring();
+
+    Matrix3x4 *GetBatchMatrix() const;
 
     /// Name.
     String name_;
@@ -811,6 +815,7 @@ private:
     StringVector tags_;
     /// Custom matrix.
     Matrix3x4 customMatrix_;
+    Matrix3x4 *batchMatrix_;
 protected:
     bool useCustomMatrix_;
 };

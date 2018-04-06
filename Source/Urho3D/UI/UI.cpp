@@ -873,8 +873,15 @@ void UI::Render(bool resetRenderTargets, VertexBuffer* buffer, const PODVector<U
         graphics_->SetShaders(vs, ps);
         if (graphics_->NeedParameterUpdate(SP_OBJECT, this))
             graphics_->SetShaderParameter(VSP_MODEL, Matrix3x4::IDENTITY);
-        if (graphics_->NeedParameterUpdate(SP_CAMERA, this))
+        if (batch.batchMatrix_)  // hack (we don't know - was matrix changed or not)
+        {
+            const Matrix3x4 &m = (*batch.batchMatrix_);
+            graphics_->SetShaderParameter(VSP_VIEWPROJ, projection * m);
+        }
+        else if (graphics_->NeedParameterUpdate(SP_CAMERA, this))
+        {
             graphics_->SetShaderParameter(VSP_VIEWPROJ, projection);
+        }
         if (graphics_->NeedParameterUpdate(SP_MATERIAL, this))
             graphics_->SetShaderParameter(PSP_MATDIFFCOLOR, Color(1.0f, 1.0f, 1.0f, 1.0f));
 
@@ -886,7 +893,6 @@ void UI::Render(bool resetRenderTargets, VertexBuffer* buffer, const PODVector<U
                 graphics_->SetShaderParameter(it->first_, it->second_);
             }
         }
-
 
         float elapsedTime = GetSubsystem<Time>()->GetElapsedTime();
         graphics_->SetShaderParameter(VSP_ELAPSEDTIME, elapsedTime);
@@ -901,6 +907,7 @@ void UI::Render(bool resetRenderTargets, VertexBuffer* buffer, const PODVector<U
         graphics_->SetBlendMode(batch.blendMode_);
         graphics_->SetScissorTest(true, scissor);
         graphics_->SetTexture(0, batch.texture_);
+
         graphics_->Draw(TRIANGLE_LIST, batch.vertexStart_ / UI_VERTEX_SIZE,
             (batch.vertexEnd_ - batch.vertexStart_) / UI_VERTEX_SIZE);
     }

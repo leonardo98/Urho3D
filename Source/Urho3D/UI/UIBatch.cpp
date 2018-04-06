@@ -44,7 +44,8 @@ UIBatch::UIBatch() :
     vertexEnd_(0),
     shaderVS_(0),
     shaderPS_(0),
-    shaderParameters_(0)
+    shaderParameters_(0),
+    batchMatrix_(nullptr)
 {
     SetDefaultColor();
 }
@@ -60,7 +61,8 @@ UIBatch::UIBatch(UIElement* element, BlendMode blendMode, const IntRect& scissor
     vertexEnd_(vertexData->Size()),
     shaderVS_(0),
     shaderPS_(0),
-    shaderParameters_(0)
+    shaderParameters_(0),
+    batchMatrix_(nullptr)
 {
     SetDefaultColor();
 }
@@ -459,7 +461,8 @@ bool UIBatch::Merge(const UIBatch& batch)
         batch.vertexStart_ != vertexEnd_ ||
         batch.shaderPS_ != shaderPS_ ||
         batch.shaderVS_ != shaderVS_ ||
-        batch.shaderParameters_ != shaderParameters_)
+        batch.shaderParameters_ != shaderParameters_ ||
+        batch.batchMatrix_ != batchMatrix_)
         return false;
 
     vertexEnd_ = batch.vertexEnd_;

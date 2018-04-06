@@ -142,7 +142,8 @@ UIElement::UIElement(Context* context) :
     enableAnchor_(false),
     pivot_(std::numeric_limits<float>::max(), std::numeric_limits<float>::max()),
     pivotSet_(false),
-    useCustomMatrix_(false)
+    useCustomMatrix_(false),
+    batchMatrix_(nullptr)
 {
     SetEnabled(false);
 }
@@ -2168,6 +2169,25 @@ void UIElement::UpdateAnchoring()
     }
 }
 
+Matrix3x4 *UIElement::GetBatchMatrix() const
+{
+    if (batchMatrix_)
+    {
+        return batchMatrix_;
+    }
+
+    UIElement *parent = GetParent();
+    while (parent)
+    {
+        if (parent->batchMatrix_)
+        {
+            return parent->batchMatrix_;
+        }
+        parent = parent->GetParent();
+    }
+    return nullptr;
+}
+
 void UIElement::GetChildrenRecursive(PODVector<UIElement*>& dest) const
 {
     for (Vector<SharedPtr<UIElement> >::ConstIterator i = children_.Begin(); i != children_.End(); ++i)
@@ -2382,6 +2402,11 @@ const Matrix3x4 UIElement::GetCustomMatrix() const
         return parent_->GetCustomMatrix() * customMatrix_ * tranlate;
     }
     return customMatrix_ * tranlate;
+}
+
+void UIElement::SetBatchMatrix(Matrix3x4 *matrix)
+{
+    batchMatrix_ = matrix;
 }
 
 

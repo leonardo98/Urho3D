@@ -131,6 +131,8 @@ void Sprite::GetBatches(PODVector<UIBatch>& batches, PODVector<float>& vertexDat
         batch.shaderParameters_ = &shaderParameters_;
     }
 
+    batch.batchMatrix_ = GetBatchMatrix();
+
     UIBatch::AddOrMerge(batch, batches);
 
     // Reset hovering for next frame

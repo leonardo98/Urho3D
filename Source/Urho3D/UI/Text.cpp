@@ -160,6 +160,7 @@ void Text::GetBatches(PODVector<UIBatch>& batches, PODVector<float>& vertexData,
         {
             batch.AddQuad(0, 0, GetWidth(), GetHeight(), 0, 0);
         }
+        batch.batchMatrix_ = GetBatchMatrix();
         UIBatch::AddOrMerge(batch, batches);
     }
 
@@ -211,6 +212,7 @@ void Text::GetBatches(PODVector<UIBatch>& batches, PODVector<float>& vertexData,
             }
         }
 
+        batch.batchMatrix_ = GetBatchMatrix();
         UIBatch::AddOrMerge(batch, batches);
     }
 
@@ -273,6 +275,7 @@ void Text::GetBatches(PODVector<UIBatch>& batches, PODVector<float>& vertexData,
             break;
         }
 
+        pageBatch.batchMatrix_ = GetBatchMatrix();
         UIBatch::AddOrMerge(pageBatch, batches);
     }
 
