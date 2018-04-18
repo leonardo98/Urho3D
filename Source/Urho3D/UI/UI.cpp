@@ -878,7 +878,7 @@ void UI::Render(bool resetRenderTargets, VertexBuffer* buffer, const PODVector<U
             const Matrix3x4 &m = (*batch.batchMatrix_);
             graphics_->SetShaderParameter(VSP_VIEWPROJ, projection * m);
         }
-        else if (graphics_->NeedParameterUpdate(SP_CAMERA, this))
+        else// if (graphics_->NeedParameterUpdate(SP_CAMERA, this))
         {
             graphics_->SetShaderParameter(VSP_VIEWPROJ, projection);
         }
