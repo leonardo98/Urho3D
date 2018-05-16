@@ -211,7 +211,7 @@ protected:
     /// Filter implicit attributes in serialization process.
     virtual bool FilterImplicitAttributes(XMLElement& dest) const;
     /// Update text when text, font or spacing changed.
-    void UpdateText(bool onResize = false);
+    virtual void UpdateText(bool onResize = false);
     /// Update cached character locations after text update, or when text alignment or indent has changed.
     void UpdateCharLocations();
     /// Validate text selection to be within the text.
