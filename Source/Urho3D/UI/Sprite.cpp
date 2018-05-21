@@ -133,11 +133,15 @@ void Sprite::GetBatches(PODVector<UIBatch>& batches, PODVector<float>& vertexDat
 
     batch.batchMatrix_ = GetBatchMatrix();
 
+    OnBatchFill(batch);
     UIBatch::AddOrMerge(batch, batches);
 
     // Reset hovering for next frame
     hovering_ = false;
 }
+
+void Sprite::OnBatchFill(UIBatch &batch)
+{}
 
 void Sprite::OnPositionSet(const IntVector2& newPosition)
 {

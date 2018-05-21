@@ -38,6 +38,8 @@ UIBatch::UIBatch() :
     element_(0),
     blendMode_(BLEND_REPLACE),
     texture_(0),
+    specular_(0),
+    normal_(0),
     invTextureSize_(Vector2::ONE),
     vertexData_(0),
     vertexStart_(0),
@@ -55,6 +57,8 @@ UIBatch::UIBatch(UIElement* element, BlendMode blendMode, const IntRect& scissor
     blendMode_(blendMode),
     scissor_(scissor),
     texture_(texture),
+    specular_(0),
+    normal_(0),
     invTextureSize_(texture ? Vector2(1.0f / (float)texture->GetWidth(), 1.0f / (float)texture->GetHeight()) : Vector2::ONE),
     vertexData_(vertexData),
     vertexStart_(vertexData->Size()),
@@ -457,6 +461,8 @@ bool UIBatch::Merge(const UIBatch& batch)
     if (batch.blendMode_ != blendMode_ ||
         batch.scissor_ != scissor_ ||
         batch.texture_ != texture_ ||
+        batch.specular_ != specular_ ||
+        batch.normal_ != normal_ ||
         batch.vertexData_ != vertexData_ ||
         batch.vertexStart_ != vertexEnd_ ||
         batch.shaderPS_ != shaderPS_ ||

@@ -115,6 +115,10 @@ public:
     virtual const Matrix3x4 GetCustomMatrix() const override;
 
 protected:
+
+    virtual void OnBatchFill(UIBatch &batch);
+
+protected:
     /// Floating point position.
     Vector2 floatPosition_;
     /// Hotspot for positioning and rotation.

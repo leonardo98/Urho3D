@@ -84,6 +84,10 @@ public:
     IntRect scissor_;
     /// Texture.
     Texture* texture_;
+    /// Specular texture.
+    Texture* specular_;
+    /// Normal texture.
+    Texture* normal_;
     /// Inverse texture size.
     Vector2 invTextureSize_;
     /// Current color. By default calculated from the element.

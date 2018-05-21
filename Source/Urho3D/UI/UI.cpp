@@ -906,7 +906,9 @@ void UI::Render(bool resetRenderTargets, VertexBuffer* buffer, const PODVector<U
 
         graphics_->SetBlendMode(batch.blendMode_);
         graphics_->SetScissorTest(true, scissor);
-        graphics_->SetTexture(0, batch.texture_);
+        graphics_->SetTexture(TU_DIFFUSE, batch.texture_);
+        graphics_->SetTexture(TU_SPECULAR, batch.specular_);
+        graphics_->SetTexture(TU_NORMAL, batch.normal_);
 
         graphics_->Draw(TRIANGLE_LIST, batch.vertexStart_ / UI_VERTEX_SIZE,
             (batch.vertexEnd_ - batch.vertexStart_) / UI_VERTEX_SIZE);
