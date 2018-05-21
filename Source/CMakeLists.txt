@@ -53,7 +53,7 @@ if (URHO3D_LIB_TYPE STREQUAL SHARED AND NOT WIN32 AND NOT ANDROID AND NOT IOS AN
 endif ()
 
 # Add targets
-foreach (TARGET FreeType JO LZ4 PugiXml rapidjson SDL StanHull STB)
+foreach (TARGET FreeType JO LZ4 PugiXml rapidjson SDL StanHull STB Ogg Theora)
     add_subdirectory (ThirdParty/${TARGET})
 endforeach ()
 
@@ -111,6 +111,7 @@ if (NOT ANDROID AND NOT ARM AND NOT WEB)
         add_subdirectory (ThirdParty/LibCpuId)
     endif ()
 endif ()
+
 
 # Urho3D game engine library
 add_subdirectory (Urho3D)
