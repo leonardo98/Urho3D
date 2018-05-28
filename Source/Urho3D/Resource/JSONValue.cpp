@@ -581,7 +581,7 @@ VariantMap JSONValue::GetVariantMap() const
 
     for (ConstJSONObjectIterator i = Begin(); i != End(); ++i)
     {
-        StringHash key(ToUInt(i->first_));
+        StringHash key(ToUInt(i->first_, 16));
         Variant variant = i->second_.GetVariant();
         variantMap[key] = variant;
     }
