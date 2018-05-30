@@ -266,9 +266,10 @@ public:
 		RAPIDJSON_ASSERT(name);
 		RAPIDJSON_ASSERT(IsObject());
 
+        SizeType length = internal::StrLen(name);
 		Object& o = data_.o;
 		for (Member* member = o.members; member != data_.o.members + data_.o.size; ++member)
-			if (name[member->name.data_.s.length] == '\0' && memcmp(member->name.data_.s.str, name, member->name.data_.s.length * sizeof(Ch)) == 0)
+			if (length == member->name.data_.s.length && name[member->name.data_.s.length] == '\0' && memcmp(member->name.data_.s.str, name, member->name.data_.s.length * sizeof(Ch)) == 0)
 				return member;
 
 		return 0;
