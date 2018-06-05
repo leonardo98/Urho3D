@@ -102,7 +102,7 @@ private:
     /// Offset (for trimmed sprite).
     IntVector2 offset_;
     /// Sprite sheet.
-    SpriteSheet2D *spriteSheet_;
+    WeakPtr<SpriteSheet2D> spriteSheet_;
     /// Texture used while loading.
     SharedPtr<Texture2D> loadTexture_;
     /// Offset to fix texture edge bleeding.
